@@ -1,0 +1,57 @@
+:root {
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+
+  --gradient-main: linear-gradient(
+    105deg,
+    #b9effa 0%,
+    #b8b0fa 35%,
+    #edb4d7 68%,
+    #f5bd92 100%
+  );
+
+  --gradient-accent: linear-gradient(
+    125deg,
+    #57d7f5,
+    #a78bfa,
+    #ec92c7,
+    #f3ae78
+  );
+
+  --radius-lg: 18px;
+  --radius-md: 12px;
+}
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-main: #0c1220;
+  --bg-panel: #111b2e;
+  --bg-input: #18243a;
+
+  --text-main: #f7f9ff;
+  --text-muted: #a5b0c4;
+
+  --border-color: #2c3950;
+  --link-color: #a9ddff;
+
+  --visual-bg: #101827;
+  --visual-text: #ffffff;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-main: #f3f7ff;
+  --bg-panel: #ffffff;
+  --bg-input: #f7f9ff;
+
+  --text-main: #17233a;
+  --text-muted: #65728a;
+
+  --border-color: #dce5f1;
+  --link-color: #7256c9;
+
+  --visual-bg: #e8f2ff;
+  --visual-text: #18243a;
+}

@@ -1,0 +1,80 @@
+@media (max-width: 950px) {
+  .auth-visual {
+    padding: 35px;
+  }
+
+  .auth-form-section {
+    padding: 75px 30px;
+  }
+
+  .visual-content h2 {
+    font-size: 39px;
+  }
+}
+
+@media (max-width: 700px) {
+  .auth-page {
+    display: block;
+  }
+
+  .auth-visual {
+    display: none;
+  }
+
+  .auth-form-section {
+    min-height: 100vh;
+    padding: 85px 24px 50px;
+  }
+
+  .mobile-brand {
+    display: flex;
+  }
+
+  .theme-toggle {
+    top: 22px;
+    right: 22px;
+  }
+
+  .form-heading h1 {
+    font-size: 30px;
+  }
+}
+
+@media (max-width: 380px) {
+  .auth-form-section {
+    padding-left: 17px;
+    padding-right: 17px;
+  }
+
+  .role-selector {
+    gap: 8px;
+  }
+
+  .role-option {
+    font-size: 12px;
+  }
+}
+/* Auth layout retains full-size desktop controls and stacks on smaller screens. */
+@media (max-width: 950px) {
+  .reference-auth { gap: 24px; padding: 90px 24px 50px; grid-template-columns: minmax(230px, 0.9fr) minmax(360px, 1fr); }
+  .reference-auth .auth-form-section { padding: 28px; }
+  .reference-auth .auth-visual { padding: 0 0 90px; }
+}
+@media (max-width: 760px) {
+  .reference-auth { display: flex; flex-direction: column; gap: 32px; padding: 88px 20px 40px; background-size: auto 100%; }
+  .reference-auth .auth-visual { display: flex; flex: none; width: 100%; min-height: 0; padding: 0; }
+  .reference-auth .auth-identity { max-width: 340px; }
+  .reference-auth .frameora-brand-icon { width: 210px; }
+  .reference-auth .frameora-brand-text { width: 250px; }
+  .reference-auth .auth-identity p { font-size: 18px; margin-top: 16px; }
+  .reference-auth .brand-divider { margin: 18px auto; }
+  .reference-auth .auth-form-section { min-height: 0; padding: 28px; align-self: center; }
+  .reference-auth .form-heading h1 { font-size: 30px; }
+  .reference-auth .mobile-brand { display: none; }
+  .reference-auth > .theme-toggle { width: 46px; height: 46px; right: 20px; }
+}
+@media (max-width: 380px) {
+  .reference-auth { padding-left: 12px; padding-right: 12px; }
+  .reference-auth .auth-form-section { padding: 24px 18px; }
+  .reference-auth .form-options { font-size: 13px; gap: 8px; }
+}

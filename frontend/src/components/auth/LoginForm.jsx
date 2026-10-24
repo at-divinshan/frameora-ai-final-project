@@ -1,16 +1,21 @@
 import { useState } from "react";
 import { Mail, LockKeyhole, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Input from "../common/Input";
 import Button from "../common/Button";
-import { loginUser } from "../../services/authService";
+import useAuth from "../../hooks/useAuth";
+import { dashboardRoute } from "../../utils/constants";
+import { authFieldErrors } from "../../services/authService";
 import { validateLogin } from "../../utils/validators";
 
 export default function LoginForm() {
+  const { login, authError } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [values, setValues] = useState({ email: "", password: "" });
   const [remember, setRemember] = useState(false);
   const [errors, setErrors] = useState({});
-  const [error, setError] = useState("");
+  const [error, setError] = useState(location.state?.authError || authError || "");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -32,9 +37,10 @@ export default function LoginForm() {
     if (Object.keys(nextErrors).length) return;
     setLoading(true);
     try {
-      await loginUser({ email: values.email.trim(), password: values.password, remember_me: remember });
-      setMessage("Login request completed successfully.");
+      const user = await login({ email: values.email.trim(), password: values.password, remember_me: remember });
+      navigate(dashboardRoute(user.role), { replace: true });
     } catch (failure) {
+      setErrors(authFieldErrors(failure));
       const detail = failure.response?.data?.detail;
       setError(typeof detail === "string" ? detail : "Unable to sign in. Please try again.");
     } finally {

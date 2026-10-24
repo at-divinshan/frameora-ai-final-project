@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Input from "../common/Input";
 import Button from "../common/Button";
-import { registerUser } from "../../services/authService";
+import { authFieldErrors, registerUser } from "../../services/authService";
 import { validateRegister } from "../../utils/validators";
 
 export default function RegisterForm() {
@@ -26,9 +26,10 @@ export default function RegisterForm() {
     if (Object.keys(nextErrors).length) return;
     setLoading(true);
     try {
-      await registerUser({ name: values.name.trim(), email: values.email.trim(), password: values.password, role: values.role });
+      await registerUser({ name: values.name.trim(), email: values.email.trim(), password: values.password, confirm_password: values.confirmPassword, accept_terms: values.acceptTerms, role: values.role });
       navigate("/login", { replace: true, state: { message: "Account created. Sign in to continue." } });
     } catch (failure) {
+      setErrors(authFieldErrors(failure));
       const detail = failure.response?.data?.detail;
       setError(typeof detail === "string" ? detail : "Unable to create your account. Please try again.");
     } finally {

@@ -1,5 +1,6 @@
 """Public authentication payloads; database roles are mapped by the service."""
 
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -27,6 +28,25 @@ class RegisterRequest(AuthCredentials):
     role: Literal["user", "owner"]
     confirm_password: str = Field(min_length=8, max_length=128, repr=False)
     accept_terms: Literal[True]
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def email_starts_with_letter(cls, value):
+        if isinstance(value, str) and value.strip() and not re.match(r"^[A-Za-z]", value.strip()):
+            raise ValueError("Email must start with a letter.")
+        return value
+
+    @field_validator("password")
+    @classmethod
+    def password_contains_both_cases(cls, value):
+        errors = []
+        if not re.search(r"[A-Z]", value):
+            errors.append("Password must contain at least one uppercase letter (A-Z).")
+        if not re.search(r"[a-z]", value):
+            errors.append("Password must contain at least one lowercase letter (a-z).")
+        if errors:
+            raise ValueError(" ".join(errors))
+        return value
 
     @field_validator("name", mode="before")
     @classmethod

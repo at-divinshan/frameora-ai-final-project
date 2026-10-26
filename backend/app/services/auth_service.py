@@ -1,5 +1,7 @@
 """Registration and login for user, owner, and existing admin accounts."""
 
+import logging
+
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -16,6 +18,7 @@ from app.schemas.auth import AuthUser, LoginRequest, RegisterRequest, TokenRespo
 
 SUPPORTED_ROLES = {"user", "owner", "admin"}
 PUBLIC_ROLES = {"user", "owner"}
+logger = logging.getLogger(__name__)
 
 
 def require_single_admin(db: Session, user: User) -> None:
@@ -60,6 +63,15 @@ def login(db: Session, data: LoginRequest) -> TokenResponse:
     stored_hash = user.password_hash if user else dummy_password_hash()
     valid_password = verify_password(data.password, stored_hash)
     if user is None or not valid_password or user.role not in SUPPORTED_ROLES:
+        # Server-only diagnostic codes: never log credentials, hashes, account
+        # identifiers, tokens, database configuration, or exception details.
+        if user is None:
+            reason = "account_not_found"
+        elif not valid_password:
+            reason = "password_verification_failed"
+        else:
+            reason = "unsupported_account_role"
+        logger.warning("Authentication rejected: %s", reason)
         raise HTTPException(
             status_code=401, detail="Invalid email or password.",
             headers={"WWW-Authenticate": "Bearer"},

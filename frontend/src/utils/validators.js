@@ -41,10 +41,25 @@ export function validateRegister(values) {
   }
 
   const emailError = validateEmail(values.email);
-  if (emailError) errors.email = emailError;
+  if (values.email.trim() && !/^[A-Za-z]/.test(values.email.trim())) {
+    errors.email = "Email must start with a letter.";
+  } else if (emailError) {
+    errors.email = emailError;
+  }
 
   const passwordError = validatePassword(values.password);
-  if (passwordError) errors.password = passwordError;
+  if (passwordError) {
+    errors.password = passwordError;
+  } else {
+    const missingLetters = [];
+    if (!/[A-Z]/.test(values.password)) {
+      missingLetters.push("Password must contain at least one uppercase letter (A-Z).");
+    }
+    if (!/[a-z]/.test(values.password)) {
+      missingLetters.push("Password must contain at least one lowercase letter (a-z).");
+    }
+    if (missingLetters.length) errors.password = missingLetters.join(" ");
+  }
 
   if (!values.confirmPassword) {
     errors.confirmPassword = "Please confirm your password.";

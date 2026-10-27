@@ -19,6 +19,15 @@ class Settings:
     jwt_access_token_expire_minutes: int = 30
     jwt_remember_me_expire_days: int = 7
     cors_origins: tuple[str, ...] = ("http://localhost:5173", "http://127.0.0.1:5173")
+    google_auth_enabled: bool = False
+    google_client_id: str = ""
+    google_client_secret: str = field(default="", repr=False)
+    google_redirect_uri: str = ""
+    frontend_origin: str = ""
+    google_completion_url: str = ""
+    redis_url: str = field(default="", repr=False)
+    oauth_transaction_key: str = field(default="", repr=False)
+    oauth_cookie_secure: bool = True
 
     @property
     def database_url(self) -> URL:
@@ -79,6 +88,15 @@ def load_settings() -> Settings:
         jwt_remember_me_expire_days=positive_integer(
             "JWT_REMEMBER_ME_EXPIRE_DAYS", "7", 30
         ),
+        google_auth_enabled=optional("GOOGLE_AUTH_ENABLED", "false").lower() == "true",
+        google_client_id=optional("GOOGLE_CLIENT_ID", ""),
+        google_client_secret=optional("GOOGLE_CLIENT_SECRET", ""),
+        google_redirect_uri=optional("GOOGLE_REDIRECT_URI", ""),
+        frontend_origin=optional("FRONTEND_ORIGIN", ""),
+        google_completion_url=optional("GOOGLE_COMPLETION_URL", ""),
+        redis_url=optional("REDIS_URL", ""),
+        oauth_transaction_key=optional("OAUTH_TRANSACTION_KEY", ""),
+        oauth_cookie_secure=optional("OAUTH_COOKIE_SECURE", "true").lower() != "false",
     )
 
 

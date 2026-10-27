@@ -523,3 +523,23 @@
 [data-theme="light"] .reference-auth .create-account { background: linear-gradient(#fff, #fff) padding-box, var(--gradient-main) border-box; color: #8000ff; }
 .reference-auth > .theme-toggle { top: 20px; right: 24px; width: 54px; height: 54px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); z-index: 2; box-shadow: 0 3px 10px #174a7e20; }
 .reference-auth > .theme-toggle svg { width: 26px; height: 26px; }
+
+/* Google actions reuse the approved auth typography, sizing, and theme tokens. */
+.reference-auth .google-auth-button {
+  min-height: 56px;
+  padding: 14px 18px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-input);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+.reference-auth .google-auth-button:focus-visible {
+  outline: 2px solid var(--link-color);
+  outline-offset: 3px;
+}
+.reference-auth .google-auth-button:disabled { opacity: 0.65; cursor: wait; }
+.reference-auth .google-auth-action .form-alert { margin: 16px 0 0; }
+.reference-auth .google-account-summary { color: var(--text-muted); overflow-wrap: anywhere; margin-bottom: 22px; }

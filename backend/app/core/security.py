@@ -38,9 +38,11 @@ def dummy_password_hash() -> str:
     return hash_password(token_urlsafe(32))
 
 
-def verify_password(password: str, password_hash: str) -> bool:
+def verify_password(password: str, password_hash: str | None) -> bool:
     try:
-        return password_hasher.verify(password, password_hash)
+        # Do the same expensive work without inventing a stored account password.
+        valid = password_hasher.verify(password, password_hash or dummy_password_hash())
+        return bool(password_hash) and valid
     except (UnknownHashError, ValueError, TypeError):
         return False
 

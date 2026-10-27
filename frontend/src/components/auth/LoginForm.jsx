@@ -7,8 +7,9 @@ import useAuth from "../../hooks/useAuth";
 import { dashboardRoute } from "../../utils/constants";
 import { authFieldErrors } from "../../services/authService";
 import { validateLogin } from "../../utils/validators";
+import GoogleButton from "./GoogleButton";
 
-export default function LoginForm() {
+export default function LoginForm({ redirectTo }) {
   const { login, authError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -18,6 +19,7 @@ export default function LoginForm() {
   const [error, setError] = useState(location.state?.authError || authError || "");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   function change(event) {
     const { name, value } = event.target;
@@ -29,7 +31,7 @@ export default function LoginForm() {
 
   async function submit(event) {
     event.preventDefault();
-    if (loading) return;
+    if (loading || googleBusy) return;
     const nextErrors = validateLogin(values);
     setErrors(nextErrors);
     setError("");
@@ -38,7 +40,7 @@ export default function LoginForm() {
     setLoading(true);
     try {
       const user = await login({ email: values.email.trim(), password: values.password, remember_me: remember });
-      navigate(dashboardRoute(user.role), { replace: true });
+      navigate(redirectTo === "/auth/google/link" && user.role !== "admin" ? redirectTo : dashboardRoute(user.role), { replace: true });
     } catch (failure) {
       setErrors(authFieldErrors(failure));
       const detail = failure.response?.data?.detail;
@@ -60,11 +62,13 @@ export default function LoginForm() {
           <label className="remember-checkbox"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />Remember me</label>
           <Link to="/forgot-password">Forgot password?</Link>
         </div>
-        <Button type="submit" loading={loading} className="full-width">Login <ArrowRight size={20} aria-hidden="true" /></Button>
+        <Button type="submit" loading={loading} disabled={googleBusy} className="full-width">Login <ArrowRight size={20} aria-hidden="true" /></Button>
       </form>
       <div className="auth-divider"><span>OR</span></div>
+      {!redirectTo && <GoogleButton remember={remember} disabled={loading} onBusyChange={setGoogleBusy} />}
       <p className="auth-switch">Don't have an account?</p>
       <Link className="gradient-button full-width create-account" to="/register">Create Account</Link>
+      {!redirectTo && <p className="auth-switch"><Link to="/auth/google/link">Link Google to an existing account</Link></p>}
     </>
   );
 }

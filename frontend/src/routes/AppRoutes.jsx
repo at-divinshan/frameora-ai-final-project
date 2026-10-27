@@ -3,6 +3,8 @@ import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import ForgotPassword from "../pages/auth/ForgotPassword";
+import GoogleCallback from "../pages/auth/GoogleCallback";
+import GoogleLink from "../pages/auth/GoogleLink";
 import UserDashboard from "../pages/user/Dashboard";
 import OwnerDashboard from "../pages/owner/Dashboard";
 import AdminDashboard from "../pages/admin/Dashboard";
@@ -35,6 +37,8 @@ export default function AppRoutes() {
       <Route path="/register" element={<PublicAuthRoute><Register /></PublicAuthRoute>} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/logout" element={<Logout />} />
+      <Route path="/auth/google/callback" element={<GoogleCallback />} />
+      <Route path="/auth/google/link" element={<GoogleLink />} />
       <Route element={<ProtectedRoute />}>
         {Object.entries(DASHBOARD_ROUTES).map(([role, path]) => (
           <Route key={role} element={<RoleRoute role={role} />}>

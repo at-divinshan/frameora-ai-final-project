@@ -76,7 +76,14 @@ def login(db: Session, data: LoginRequest) -> TokenResponse:
             status_code=401, detail="Invalid email or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    require_single_admin(db, user)
     # Login never changes existing account records or hashes.
-    token, expires_in = create_access_token(str(user.id), data.remember_me)
+    return issue_session(db, user, data.remember_me)
+
+
+def issue_session(db: Session, user: User, remember_me: bool) -> TokenResponse:
+    """Shared session format; roles remain authoritative in the database."""
+    if user.role not in SUPPORTED_ROLES:
+        raise HTTPException(status_code=401, detail="Unable to authenticate.")
+    require_single_admin(db, user)
+    token, expires_in = create_access_token(str(user.id), remember_me)
     return TokenResponse(access_token=token, expires_in=expires_in, user=public_user(user))

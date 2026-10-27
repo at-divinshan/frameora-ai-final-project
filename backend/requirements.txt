@@ -6,4 +6,7 @@ python-dotenv
 pydantic
 email-validator
 pwdlib[argon2]
-PyJWT
+PyJWT[crypto]>=2.10,<3
+Authlib>=1.6,<2
+httpx>=0.28,<1
+redis>=5,<8

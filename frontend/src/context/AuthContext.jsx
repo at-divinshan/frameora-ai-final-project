@@ -4,6 +4,7 @@ import {
   AUTH_STORAGE_KEY, clearStoredSession, getCurrentUser, loginUser,
   readStoredSession, storeSession,
 } from "../services/authService";
+import { clearGoogleFlow } from "../services/googleAuthService";
 
 export const AuthContext = createContext(null);
 
@@ -17,6 +18,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback((message = "") => {
     revision.current += 1;
     clearStoredSession();
+    clearGoogleFlow();
     setAccessToken(null);
     setSession(null);
     setUser(null);
@@ -97,8 +99,27 @@ export function AuthProvider({ children }) {
     return data.user;
   }
 
+  const googleAuthenticate = useCallback(async (request, remember = false) => {
+    const currentRevision = ++revision.current;
+    const data = await request();
+    if (currentRevision !== revision.current) throw new Error("Sign-in was cancelled.");
+    if (data.status === "registration_required") return data;
+    if (!data.user || !["user", "owner"].includes(data.user.role) ||
+        typeof data.access_token !== "string" || !data.access_token ||
+        !Number.isFinite(data.expires_in) || data.expires_in <= 0) {
+      throw new Error("Invalid Google authentication response.");
+    }
+    const saved = storeSession(data, remember === true);
+    setAccessToken(saved.accessToken);
+    setSession(saved);
+    setUser(data.user);
+    setAuthError("");
+    setLoading(false);
+    return data.user;
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, authError, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, authError, login, logout, googleAuthenticate }}>
       {children}
     </AuthContext.Provider>
   );

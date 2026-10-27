@@ -4,7 +4,7 @@ import LoginForm from "../../components/auth/LoginForm";
 import FrameoraLogo from "../../components/common/FrameoraLogo";
 import useTheme from "../../hooks/useTheme";
 
-export default function Login() {
+export default function Login({ children }) {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
 
@@ -39,7 +39,7 @@ export default function Login() {
             </div>
           )}
 
-          <LoginForm />
+          {children ?? <LoginForm />}
         </div>
       </section>
     </main>

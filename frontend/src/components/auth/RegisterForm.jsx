@@ -4,6 +4,7 @@ import Input from "../common/Input";
 import Button from "../common/Button";
 import { authFieldErrors, registerUser } from "../../services/authService";
 import { validateRegister } from "../../utils/validators";
+import GoogleButton from "./GoogleButton";
 
 export default function RegisterForm() {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ export default function RegisterForm() {
   const [errors, setErrors] = useState({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   function change(event) {
     const { name, value, type, checked } = event.target;
     setValues((current) => ({ ...current, [name]: type === "checkbox" ? checked : value }));
@@ -19,7 +21,7 @@ export default function RegisterForm() {
   }
   async function submit(event) {
     event.preventDefault();
-    if (loading) return;
+    if (loading || googleBusy) return;
     const nextErrors = validateRegister(values);
     setErrors(nextErrors);
     setError("");
@@ -52,8 +54,10 @@ export default function RegisterForm() {
         </div>
         <label className="terms-checkbox"><input name="acceptTerms" type="checkbox" checked={values.acceptTerms} onChange={change} />I accept the terms and conditions.</label>
         {errors.acceptTerms && <p className="field-error" role="alert">{errors.acceptTerms}</p>}
-        <Button type="submit" loading={loading} className="full-width">Register</Button>
+        <Button type="submit" loading={loading} disabled={googleBusy} className="full-width">Register</Button>
       </form>
+      <div className="auth-divider"><span>OR</span></div>
+      <GoogleButton disabled={loading} onBusyChange={setGoogleBusy} />
       <p className="auth-switch">Already have an account? <Link to="/login">Login</Link></p>
     </>
   );

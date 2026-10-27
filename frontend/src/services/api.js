@@ -31,7 +31,8 @@ api.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       error.config?.headers?.Authorization === `Bearer ${accessToken}` &&
-      error.config?.url !== "/auth/login"
+      error.config?.url !== "/auth/login" &&
+      error.config?.url !== "/auth/google/link/start"
     ) {
       unauthorizedHandler?.();
     }

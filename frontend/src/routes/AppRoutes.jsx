@@ -13,6 +13,10 @@ import RoleRoute from "./RoleRoute";
 import useAuth from "../hooks/useAuth";
 import { DASHBOARD_ROUTES, dashboardRoute } from "../utils/constants";
 
+import PublicLayout from "../components/public/PublicLayout";
+import Landing from "../pages/public/Landing";
+import { Features, HowItWorks, ForCreators, ForStudios, About } from "../pages/public/MarketingPages";
+
 function PublicAuthRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -32,7 +36,14 @@ function Logout() {
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route element={<PublicLayout />}>
+        <Route path="/" element={<Landing />} />
+        <Route path="/features" element={<Features />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/for-creators" element={<ForCreators />} />
+        <Route path="/for-studios" element={<ForStudios />} />
+        <Route path="/about" element={<About />} />
+      </Route>
       <Route path="/login" element={<PublicAuthRoute><Login /></PublicAuthRoute>} />
       <Route path="/register" element={<PublicAuthRoute><Register /></PublicAuthRoute>} />
       <Route path="/forgot-password" element={<ForgotPassword />} />

@@ -44,3 +44,7 @@ class GoogleLinkConsent(GoogleRequest):
 
 class GoogleLinkStart(GoogleLinkConsent):
     password: str = Field(min_length=1, max_length=128, repr=False)
+
+
+class GooglePasswordSetupStart(GoogleLinkConsent):
+    pass

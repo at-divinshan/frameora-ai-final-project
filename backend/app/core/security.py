@@ -47,7 +47,16 @@ def verify_password(password: str, password_hash: str | None) -> bool:
         return False
 
 
-def create_access_token(user_id: str, remember_me: bool) -> tuple[str, int]:
+def auth_versions_enabled() -> bool:
+    return settings.auth_version_enabled
+
+
+def require_password_management():
+    if not auth_versions_enabled() or not settings.password_management_enabled:
+        raise HTTPException(503, "Password management is not enabled.")
+
+
+def create_access_token(user_id: str, remember_me: bool, auth_version: int | None = None) -> tuple[str, int]:
     secret = require_jwt_configuration()
     now = datetime.now(timezone.utc)
     lifetime = (
@@ -55,18 +64,25 @@ def create_access_token(user_id: str, remember_me: bool) -> tuple[str, int]:
         if remember_me
         else timedelta(minutes=settings.jwt_access_token_expire_minutes)
     )
-    token = jwt.encode(
-        {
+    claims = {
             "sub": str(user_id), "iat": now, "nbf": now, "exp": now + lifetime,
             "iss": JWT_ISSUER, "aud": JWT_AUDIENCE, "type": "access",
-        },
+        }
+    if auth_versions_enabled():
+        if type(auth_version) is not int or not 0 <= auth_version <= 2**64 - 1:
+            raise HTTPException(503, "Authentication is unavailable.")
+        claims["auth_version"] = auth_version
+        # Distinguish separately issued sessions even within the same second.
+        claims["jti"] = token_urlsafe(24)
+    token = jwt.encode(
+        claims,
         secret,
         algorithm=JWT_ALGORITHM,
     )
     return token, int(lifetime.total_seconds())
 
 
-def decode_access_token(token: str) -> str:
+def decode_access_claims(token: str) -> dict:
     secret = require_jwt_configuration()
     try:
         payload = jwt.decode(
@@ -79,10 +95,17 @@ def decode_access_token(token: str) -> str:
         )
         if payload["type"] != "access" or not isinstance(payload["sub"], str) or not payload["sub"]:
             raise jwt.InvalidTokenError()
-        return payload["sub"]
-    except jwt.InvalidTokenError:
+        if auth_versions_enabled() and (type(payload.get("auth_version")) is not int or
+                                       not 0 <= payload["auth_version"] <= 2**64 - 1):
+            raise jwt.InvalidTokenError()
+        return payload
+    except (jwt.InvalidTokenError, ValueError, TypeError, OverflowError):
         raise HTTPException(
             status_code=401,
             detail="Your session is invalid or has expired. Please sign in again.",
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
+
+
+def decode_access_token(token: str) -> str:
+    return decode_access_claims(token)["sub"]

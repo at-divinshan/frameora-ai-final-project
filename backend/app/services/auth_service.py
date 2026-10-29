@@ -13,6 +13,9 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.repositories.user_repository import add_user, find_by_email
+from app.repositories.user_repository import lock_profile
+from app.core.security import auth_versions_enabled
+from app.core.auth_version import current_version
 from app.schemas.auth import AuthUser, LoginRequest, RegisterRequest, TokenResponse
 
 
@@ -60,6 +63,8 @@ def register(db: Session, data: RegisterRequest) -> AuthUser:
 def login(db: Session, data: LoginRequest) -> TokenResponse:
     require_jwt_configuration()
     user = find_by_email(db, str(data.email))
+    if user is not None and auth_versions_enabled():
+        user = lock_profile(db, user.id)
     stored_hash = user.password_hash if user else dummy_password_hash()
     valid_password = verify_password(data.password, stored_hash)
     if user is None or not valid_password or user.role not in SUPPORTED_ROLES:
@@ -85,5 +90,5 @@ def issue_session(db: Session, user: User, remember_me: bool) -> TokenResponse:
     if user.role not in SUPPORTED_ROLES:
         raise HTTPException(status_code=401, detail="Unable to authenticate.")
     require_single_admin(db, user)
-    token, expires_in = create_access_token(str(user.id), remember_me)
+    token, expires_in = create_access_token(str(user.id), remember_me, current_version(db, user.id, lock=True))
     return TokenResponse(access_token=token, expires_in=expires_in, user=public_user(user))

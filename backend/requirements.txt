@@ -10,3 +10,5 @@ PyJWT[crypto]>=2.10,<3
 Authlib>=1.6,<2
 httpx>=0.28,<1
 redis>=5,<8
+Pillow>=12.3,<13
+python-multipart>=0.0.32,<1

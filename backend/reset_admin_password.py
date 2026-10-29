@@ -18,6 +18,40 @@ class ResetAborted(Exception):
     """An expected refusal with a safe, non-sensitive message."""
 
 
+def reset_locked_admin(connection, new_hash):
+    """Called inside a transaction; supports legacy and migrated schemas without DDL."""
+    from sqlalchemy import inspect, select, update
+    from app.core.security import auth_versions_enabled
+    from app.models.user import User
+
+    table = User.__table__
+    versioned = any(c["name"] == "auth_version" for c in inspect(connection).get_columns("User"))
+    if auth_versions_enabled() and not versioned:
+        raise ResetAborted("The required authentication migration is missing. No password was updated.")
+    columns = [c for c in table.c if c.name != "auth_version" or versioned]
+    admins = connection.execute(select(*columns).where(table.c.role == "admin").with_for_update()).mappings().all()
+    if len(admins) != 1:
+        raise ResetAborted("Expected exactly one existing Admin. No password was updated.")
+    before = dict(admins[0])
+    if before["name"] != ADMIN_NAME or before["email"] != ADMIN_EMAIL:
+        raise ResetAborted("The existing Admin does not match the specified account. No password was updated.")
+    changes = {"password_hash": new_hash}
+    if versioned:
+        version = before["auth_version"]
+        if type(version) is not int or not 0 <= version < 2**64 - 1:
+            raise ResetAborted("Authentication version is unavailable. No password was updated.")
+        changes["auth_version"] = version + 1
+    query = update(table).where(table.c.id == before["id"], table.c.role == "admin",
+                                table.c.email == ADMIN_EMAIL, table.c.password_hash == before["password_hash"])
+    if versioned:
+        query = query.where(table.c.auth_version == before["auth_version"])
+    if connection.execute(query.values(**changes)).rowcount != 1:
+        raise ResetAborted("Update did not affect exactly one account. Changes rolled back.")
+    after = dict(connection.execute(select(*columns).where(table.c.id == before["id"])).mappings().one())
+    if any(after[key] != changes.get(key, value) for key, value in before.items()):
+        raise ResetAborted("Account verification failed. Changes rolled back.")
+
+
 def main() -> int:
     # Avoid creating Python bytecode files when importing the application.
     sys.dont_write_bytecode = True
@@ -30,11 +64,9 @@ def main() -> int:
             raise ResetAborted("Run this script directly in an interactive local terminal.")
 
         from pydantic import TypeAdapter, ValidationError
-        from sqlalchemy import select, update
 
         from app.core.security import hash_password
         from app.database.connection import engine
-        from app.models.user import User
         from app.schemas.auth import RegisterRequest
 
         print(f"Reset password for {ADMIN_NAME} ({ADMIN_EMAIL}), role: admin.")
@@ -73,49 +105,9 @@ def main() -> int:
         # Plaintext is used only in process memory for prompting/validation/hashing.
         password = confirmation = None
 
-        table = User.__table__
         with engine.connect().execution_options(isolation_level="REPEATABLE READ") as connection:
             with connection.begin():
-                # Lock matching Admin rows and their index gaps until commit.
-                # Concurrent resets cannot change the account during verification.
-                admins = connection.execute(
-                    select(table).where(table.c.role == "admin").with_for_update()
-                ).mappings().all()
-                if len(admins) != 1:
-                    raise ResetAborted(
-                        "Expected exactly one existing Admin. No password was updated."
-                    )
-                before = dict(admins[0])
-                if (
-                    before["name"] != ADMIN_NAME
-                    or before["email"] != ADMIN_EMAIL
-                    or before["role"] != "admin"
-                ):
-                    raise ResetAborted(
-                        "The existing Admin does not match the specified name, email, and role. "
-                        "No password was updated."
-                    )
-
-                # This is the only write: one column of the locked, verified account.
-                result = connection.execute(
-                    update(table)
-                    .where(
-                        table.c.id == before["id"],
-                        table.c.email == ADMIN_EMAIL,
-                        table.c.role == "admin",
-                    )
-                    .values(password_hash=new_hash)
-                )
-                if result.rowcount != 1:
-                    raise ResetAborted("Update did not affect exactly one account. Changes rolled back.")
-
-                after = dict(connection.execute(
-                    select(table).where(table.c.id == before["id"])
-                ).mappings().one())
-                if after["password_hash"] != new_hash or any(
-                    after[key] != value for key, value in before.items() if key != "password_hash"
-                ):
-                    raise ResetAborted("Account verification failed. Changes rolled back.")
+                reset_locked_admin(connection, new_hash)
                 commit_attempted = True
             # Success is reported only after the transaction context commits.
 

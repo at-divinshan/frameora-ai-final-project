@@ -1,0 +1,36 @@
+.user-dashboard { --account-panel: var(--dashboard-sidebar); --account-text: var(--dashboard-text); --account-muted: var(--dashboard-muted); --account-border: var(--dashboard-line); --account-input: var(--dashboard-search); --account-gradient: var(--dashboard-gradient); }
+.owner-dashboard { --account-panel: var(--owner-panel); --account-text: var(--owner-text); --account-muted: var(--owner-muted); --account-border: var(--owner-border); --account-input: var(--owner-input); --account-gradient: var(--owner-gradient); }
+.admin-dashboard { --account-panel: var(--admin-panel); --account-text: var(--admin-text); --account-muted: var(--admin-muted); --account-border: var(--admin-border); --account-input: var(--admin-input); --account-gradient: var(--admin-gradient); }
+.account-profile-link { color: inherit; text-decoration: none; }
+.account-avatar { overflow: hidden; flex-shrink: 0; }
+.account-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.account-page { color: var(--account-text); width: 100%; min-width: 0; }
+.account-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 24px; }
+.account-heading h1 { font-size: 28px; margin: 0 0 8px; }
+.account-page p { color: var(--account-muted); line-height: 1.6; }
+.account-page a { color: var(--account-text); }
+.account-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.account-card { padding: 24px; border: 1px solid var(--account-border); border-radius: 16px; background: var(--account-panel); min-width: 0; }
+.account-card h2 { font-size: 20px; margin: 0 0 20px; }
+.account-card h3 { font-size: 16px; }
+.account-wide { grid-column: 1 / -1; }
+.account-page .form-field { margin-bottom: 20px; }
+.account-page .form-field label { display: block; color: var(--account-text); margin-bottom: 8px; }
+.account-page .input-wrapper, .account-page select { background: var(--account-input); border: 1px solid var(--account-border); border-radius: 10px; color: var(--account-text); width: 100%; }
+.account-page .input-wrapper input { color: var(--account-text); background: transparent; width: 100%; padding: 12px; border: 0; min-width: 0; }
+.account-page select { padding: 12px; font: inherit; }
+.account-page .gradient-button { background: var(--account-gradient); width: auto; padding: 12px 20px; }
+.account-page button:disabled, .account-page input:disabled, .account-page select:disabled { opacity: .55; cursor: not-allowed; }
+.account-page :focus-visible { outline: 2px solid #8b63ff; outline-offset: 3px; }
+.account-picture { display: flex; align-items: center; justify-content: center; width: 96px; height: 96px; border-radius: 50%; background: var(--account-gradient); color: #171421; font-size: 36px; }
+.account-secondary { display: inline-block; padding: 10px 16px; margin: 8px 8px 0 0; border: 1px solid var(--account-border); border-radius: 9px; background: var(--account-input); color: var(--account-text); font: inherit; cursor: pointer; text-decoration: none; }
+.account-upload { display: block; font-size: 14px; margin: 16px 0 8px; }
+.account-upload input { display: block; max-width: 100%; margin-top: 8px; color: var(--account-text); }
+.account-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.account-details dt { color: var(--account-muted); font-size: 13px; margin-bottom: 6px; }
+.account-details dd { margin: 0; overflow-wrap: anywhere; }
+.account-error, .account-notice { border: 1px solid var(--account-border); background: var(--account-panel); padding: 14px; border-radius: 10px; margin-bottom: 20px; }
+.account-error { color: #e56373; }
+.account-error button { margin-left: 12px; }
+.account-security-method { border-top: 1px solid var(--account-border); margin-top: 24px; padding-top: 16px; }
+@media (max-width: 760px) { .account-grid, .account-details { grid-template-columns: minmax(0, 1fr); } .account-card { padding: 18px; } .account-heading h1 { font-size: 24px; } .account-page .gradient-button { max-width: 100%; white-space: normal; } }

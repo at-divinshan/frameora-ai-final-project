@@ -14,6 +14,28 @@ def find_by_id(db: Session, user_id: int) -> User | None:
     return db.get(User, user_id)
 
 
+def lock_profile(db: Session, user_id: int) -> User | None:
+    from app.core.auth_version import check_authenticated_snapshot
+    user = db.get(User, user_id, populate_existing=True, with_for_update=True)
+    if user is not None:
+        check_authenticated_snapshot(db, user)
+    return user
+
+
+def save_privacy(db: Session, user: User, preferences: dict) -> None:
+    # Replace the JSON value so SQLAlchemy detects the change.
+    user.privacy_preferences = preferences
+    db.flush()
+
+
+def update_self_profile(db: Session, user: User, changes: dict) -> None:
+    """Only these two fields can be written, even if a caller passes extra keys."""
+    for field in ("name", "phone"):
+        if field in changes:
+            setattr(user, field, changes[field])
+    db.flush()
+
+
 def add_user(db: Session, *, name: str, email: str, password_hash: str, role: str) -> User:
     user = User(name=name, email=email, password_hash=password_hash, role=role)
     db.add(user)

@@ -28,6 +28,9 @@ class Settings:
     redis_url: str = field(default="", repr=False)
     oauth_transaction_key: str = field(default="", repr=False)
     oauth_cookie_secure: bool = True
+    auth_version_enabled: bool = False
+    password_management_enabled: bool = False
+    profile_image_dir: str = str(Path(__file__).resolve().parents[2] / "private" / "profile-pictures")
 
     @property
     def database_url(self) -> URL:
@@ -97,6 +100,9 @@ def load_settings() -> Settings:
         redis_url=optional("REDIS_URL", ""),
         oauth_transaction_key=optional("OAUTH_TRANSACTION_KEY", ""),
         oauth_cookie_secure=optional("OAUTH_COOKIE_SECURE", "true").lower() != "false",
+        auth_version_enabled=optional("AUTH_VERSION_ENABLED", "false").lower() == "true",
+        password_management_enabled=optional("PASSWORD_MANAGEMENT_ENABLED", "false").lower() == "true",
+        profile_image_dir=optional("PROFILE_IMAGE_DIR", Settings.profile_image_dir),
     )
 
 

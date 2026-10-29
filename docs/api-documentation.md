@@ -292,3 +292,192 @@ The frontend immediately removes these markers and shows fixed messages. It neve
 renders provider error descriptions or extracts tokens/codes from the URL. A
 configuration failure before entering the backend callback may still return a
 sanitized API error because there may be no valid frontend destination configured.
+
+## Day 4 Stage 2: privacy settings
+
+`GET /users/me/privacy` and `PATCH /users/me/privacy` require the existing Bearer
+JWT. The target account is always loaded from the authenticated identity. PATCH
+accepts one or more of these keys, each strictly `"private"` or `"public"`:
+
+```json
+{
+  "profile_visibility": "private",
+  "photography_plans_default": "private",
+  "ai_images_default": "private"
+}
+```
+
+All defaults are private. Missing/null/malformed stored values are interpreted
+as private without writing during GET. PATCH rejects null values, empty objects,
+unknown keys and protected fields with 422. Unspecified keys retain their
+effective values. The service locks/reloads the authenticated row and replaces
+the existing `User.privacy_preferences` JSON value in one transaction; no schema
+change is required. Admin profile visibility is always private, regardless of
+stored JSON, and attempts to set it public return 403.
+
+`GET /users/{user_id}/public-profile` requires no JWT. Only public User/Owner
+profiles return 200, with exactly `name` and `profile_image`. Private, Admin and
+nonexistent profiles return the same generic 404. Responses use no-store caching.
+This endpoint does not serve image bytes or implement uploads. Image references
+are the existing stored profile reference, not a new public storage route.
+
+Plan and AI-image preferences are creation defaults only: changing them neither
+publishes existing content nor creates sharing links. Their content APIs do not
+exist yet; future endpoints must enforce ownership and explicit content privacy.
+No claim of completed plan/image access enforcement is made by this stage.
+
+Isolated checks: from `backend`, run
+`.venv/bin/python -B -m unittest discover -s tests -p 'test_*.py' -v`.
+Privacy tests use ephemeral real JWT signing and disposable SQLite accounts;
+Stage 1 tests mock JWT decoding. Both block configured database connections.
+These tests do not validate MySQL persistence or MySQL row-lock concurrency.
+
+## Day 4 Stage 3: private profile pictures
+
+All mutations derive the account exclusively from the JWT/database identity.
+
+| Method/path | Request/access | Result |
+| --- | --- | --- |
+| `POST /users/me/picture` | Bearer JWT; raw JPEG/PNG bytes with `Content-Type: image/jpeg` or `image/png` | Upload/replace, `{"profile_image":"<opaque key>"}` |
+| `DELETE /users/me/picture` | Bearer JWT | Remove, `{"profile_image":null}`; idempotent |
+| `GET /users/me/picture` | Bearer JWT | Own image, including private/Admin images |
+| `GET /users/{user_id}/picture` | Public visibility checked on every request | Public User/Owner picture only; otherwise generic 404 |
+
+The upload contract is a raw image body, **not multipart or JSON**. Later frontend
+integration should send the selected File/Blob with the correct content type,
+overriding the API client's JSON default. Filenames, query account IDs, remote
+URLs and client storage paths are never used. 415 rejects unsupported media
+types, 413 rejects uploads exceeding 5 MiB while reading (even without a
+Content-Length), and 422 rejects invalid/animated/unsupported image content or
+decoded dimensions exceeding 16,000,000 pixels. Pillow verifies, decodes,
+orients, resizes to fit 512×512 and re-encodes clean pixels as PNG without metadata.
+Both JPEG and PNG inputs therefore return `image/png` on retrieval.
+
+Private files default to `backend/private/profile-pictures` (gitignored). Set
+`PROFILE_IMAGE_DIR` to an absolute private persistent path if needed; the service
+does not change `.env`. The leaf directory is created lazily with mode 0700 and
+files with mode 0600. Existing overly permissive directories are rejected.
+Symlinked paths, frontend directories and paths containing public/static are
+rejected. Do not mount this directory through a web server, CDN or static route.
+Multiple workers/instances must share this same persistent storage. Back up files
+and database references together. Pillow and python-multipart are installed in
+the backend virtual environment; the raw-body endpoint does not use a multipart
+parser, avoiding unbounded pre-handler multipart spooling.
+
+Only random immutable keys are stored in `User.profile_image`. There is no
+key-addressed serving endpoint. Image responses and handled errors have no-store,
+nosniff and same-site resource-policy headers. Private images are fetched using
+authenticated requests; later frontend code can display a temporary object URL.
+Admin images are never served through the public endpoint, even if legacy JSON
+claims a public profile. Legacy path/URL references are not fetched or served.
+
+Mutations lock/reload the account row, write/fsync a new unique file, commit its
+key, then delete the previous file. Retrieval holds the row lock until bytes are
+read. A rollback before commit cleans up the new file; an ambiguous commit failure
+retains both files to avoid breaking a potentially committed reference. Cleanup
+failures and process crashes can leave private orphans, never a direct public URL.
+An offline, coordinated orphan cleanup procedure is deferred; do not delete files
+based on an uncoordinated database snapshot while uploads are running. MySQL lock
+concurrency and crash recovery require isolated MySQL/deployment testing.
+
+Tests use disposable SQLite accounts, real test-signed JWTs and temporary private
+storage. Stage 1/2 regressions run alongside upload, replacement, removal,
+visibility, validation, traversal/symlink, size-limit and failure tests. No live
+MySQL records or production image files are touched.
+
+## Day 4 Stage 4: migration-gated password management
+
+**Prepared, not activated.** `AUTH_VERSION_ENABLED=false` and
+`PASSWORD_MANAGEMENT_ENABLED=false` are the defaults. No automatic migrations or
+database creation run. The model's new server-default column is deferred, and
+eager default loading is disabled: legacy selects/inserts/updates do not reference
+`auth_version` while the gate is off. Tests use a database genuinely missing that
+column. Never enable the version gate against the current unmigrated database.
+
+Migration `backend/migrations/002_user_auth_version.sql` adds only
+`User.auth_version BIGINT UNSIGNED NOT NULL DEFAULT 0`, using `ALGORITHM=INSTANT`
+to fail rather than silently rebuild. It preserves the 16-table structure.
+Execution requires separate approval, a current backup and confirmation that the
+actual MySQL version/table supports the algorithm. No migration has been executed.
+
+Activation sequence (manual, separately approved):
+
+1. Verify backup, table count, column absence and MySQL compatibility; test the
+   migration in isolated MySQL first. Obtain migration execution approval.
+2. Apply the additive migration, verify the non-null default and unchanged
+   account counts/identities/roles and existing password hashes without printing
+   them. Keep both gates false until ready for the coordinated rollout.
+3. Drain existing requests and replace all workers with version-aware code;
+   enable `AUTH_VERSION_ENABLED=true` consistently. Do not run mixed workers.
+   All existing JWTs lacking the claim now return 401, including Remember Me.
+4. Restart sign-in/OAuth transactions. Pre-activation existing-account OAuth
+   authorization/login/link proofs cannot bypass version checks.
+5. Verify login for all roles and Google, then separately enable
+   `PASSWORD_MANAGEMENT_ENABLED=true` when Redis and API integration are ready.
+
+New JWTs contain a strictly validated integer `auth_version` and a random `jti`
+so separately issued sessions are distinct even within the same second. Every
+authenticated request compares the claim with the database; neither a client role
+nor an email supplies authorization. Password login locks/reloads the account
+before password verification and token issuance. Google existing-account login
+completion and linking check the captured version under a row lock. Sensitive
+profile/privacy/picture writes recheck the authenticated version when locking.
+An already-authorized in-flight read cannot be retroactively withdrawn.
+
+| Endpoint | Payload and authorization |
+| --- | --- |
+| `POST /auth/password/change` | JWT; `current_password`, `new_password`, `confirm_password`; password-based User/Owner/Admin |
+| `POST /auth/google/password-setup/start` | JWT, permitted Origin and JSON `{"consent":true}`; Google-only User/Owner |
+| `POST /auth/google/password-setup/complete` | Same JWT session, browser cookies, JSON `new_password`, `confirm_password` |
+
+New passwords use the existing policy: 8–128 characters, uppercase and lowercase,
+matching confirmation, no trimming. Argon2 remains the hasher. Unknown fields are
+rejected. Incorrect current password returns 400, invalid schemas 422, invalid or
+revoked JWTs 401, and disabled features/unavailable Redis 503. Successful writes
+return `{"status":"password_updated","reauthentication_required":true}` with
+no replacement JWT. Hash and incremented version commit atomically; all earlier
+sessions, including the initiating and remembered sessions, become invalid.
+
+Google setup uses a new authorization-code flow with independent state, nonce,
+S256 PKCE and browser binding. Separate Redis purposes bind it to account ID,
+original Google subject, JWT digest, version and start time. Only the existing
+verified Google `sub` can authorize setup. No email merge or Admin setup is allowed.
+Authorization expires after 300 seconds; completion proof has at most 60 seconds
+and remains within the original 300-second window. Redis consumes proofs atomically
+once. Callback reuses `/auth/google/callback` and the fixed frontend return URL,
+with the static `#google-password-setup` marker and an HttpOnly completion cookie.
+This is fresh Google verification, not a promise of a Google password prompt.
+The existing frontend does not handle this new marker yet; frontend integration
+is intentionally deferred. No passwords, Google codes or JWTs go in frontend URLs.
+
+Redis rate limits are five attempts per account/action per five minutes and 30
+password-management requests per peer IP across actions per five minutes. Limits
+run before hashing or provider exchange, return 429 with Retry-After and fail
+closed. Password changes do not depend on Google credentials or its enabled flag.
+Only a trusted ASGI peer is used; deployment must configure trusted proxies.
+Existing password login throttling is not introduced by this stage.
+
+Concurrent writes use row locks plus a compare-and-swap predicate on version and
+password hash. Only one stale-version writer can succeed. Rollback restores both
+hash and version; ambiguous commit errors must not be blindly retried. A consumed
+Google proof is not restored after database failure: restart verification.
+The interactive Admin reset helper increments the version whenever the column
+exists (even with the feature gate off), and refuses a missing column if version
+enforcement is on. It preserves the existing exactly-one-Admin and identity checks.
+
+Safe rollback: disable `PASSWORD_MANAGEMENT_ENABLED` while keeping
+`AUTH_VERSION_ENABLED=true`, retaining the column and all version checks. Never
+reset versions, drop the column or deploy code ignoring it: revoked tokens can
+become valid again. Database restoration can also resurrect old versions/hashes.
+A destructive rollback requires a separate recovery/key-rotation decision; this
+implementation does not rotate existing keys.
+
+Testing: `.venv/bin/python -B -m unittest discover -s tests -p 'test_*.py' -v`.
+Stage 4 uses real Argon2/JWT signatures, disposable SQLite (with and without the
+column) and a spawned Redis process on a private temporary Unix socket, with TCP
+and persistence disabled. No configured Redis/MySQL is contacted. Redis tests are
+skipped explicitly if redis-server is unavailable. Provider exchanges are simulated;
+offline ID-token tests use real RSA signatures and mocked network responses.
+SQLite compare-and-swap concurrency does not establish MySQL row-lock behavior.
+Live MySQL migration/persistence/locking, real Google consent and browser/frontend
+integration remain untested and are required before production activation.

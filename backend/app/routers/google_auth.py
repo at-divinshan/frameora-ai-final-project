@@ -10,6 +10,10 @@ from app.core.google_oidc import new_secret, rejected, require_configuration
 from app.database.connection import get_db
 from app.models.user import User
 from app.schemas.google_auth import GoogleLinkConsent, GoogleLinkStart, GoogleRegistration, GoogleStart
+from app.schemas.google_auth import GooglePasswordSetupStart
+from app.schemas.auth import NewPassword
+from app.core.security import require_password_management
+from app.services.rate_limit_service import limit_password_attempt
 from app.services import google_auth_service as service
 from app.services.oauth_transaction_store import AUTH_TTL, COMPLETION_TTL, REGISTRATION_TTL, get_store
 
@@ -60,7 +64,7 @@ def rate_start(request: Request):
 
 
 def clear_flow(response: Response):
-    for part in ("binding", "completion", "registration", "link"):
+    for part in ("binding", "completion", "registration", "link", "password-setup"):
         clear_cookie(response, part)
 
 
@@ -93,7 +97,7 @@ def callback(request: Request, db: Session = Depends(get_db)):
         response = RedirectResponse(settings.google_completion_url + "#" + marker, status_code=303)
         clear_flow(response)
         return response
-    response = RedirectResponse(settings.google_completion_url, status_code=303)
+    response = RedirectResponse(settings.google_completion_url + ("#google-password-setup" if part == "password-setup" else ""), status_code=303)
     set_cookie(response, part, result, COMPLETION_TTL)
     return response
 
@@ -106,6 +110,27 @@ def complete(request: Request, response: Response, db: Session = Depends(get_db)
         set_cookie(response, "registration", registration, REGISTRATION_TTL)
     else:
         clear_flow(response)
+    return result
+
+
+@router.post("/password-setup/start", dependencies=[Depends(require_password_management)])
+def password_setup_start(data: GooglePasswordSetupStart, request: Request, response: Response,
+                         user: User = Depends(get_current_user)):
+    limit_password_attempt("setup-start", user.id, request.client.host if request.client else "unknown")
+    browser = new_secret()
+    url = service.begin_password_setup(browser, user, request.headers.get("authorization", ""))
+    clear_flow(response)
+    set_cookie(response, "binding", browser, AUTH_TTL + COMPLETION_TTL)
+    return {"authorization_url": url}
+
+
+@router.post("/password-setup/complete", dependencies=[Depends(require_password_management)])
+def password_setup_complete(data: NewPassword, request: Request, response: Response,
+                            db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    limit_password_attempt("setup-complete", user.id, request.client.host if request.client else "unknown")
+    result = service.complete_password_setup(db, handle(request, "password-setup"), browser_binding(request),
+                                            user, request.headers.get("authorization", ""), data)
+    clear_flow(response)
     return result
 
 

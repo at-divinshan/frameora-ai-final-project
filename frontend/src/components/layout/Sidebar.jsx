@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Bell, CalendarDays, ClipboardList, Compass, Heart, House, LogOut, Menu, UserRound, X } from "lucide-react";
+import { Link, NavLink } from "react-router-dom";
+import { Bell, CalendarDays, ClipboardList, Compass, Heart, House, LogOut, Menu, UserRound, Settings, X } from "lucide-react";
 import FrameoraLogo from "../common/FrameoraLogo";
 
 const upcomingItems = [
@@ -9,7 +9,6 @@ const upcomingItems = [
   { label: "My Favorites", icon: Heart },
   { label: "My Bookings", icon: CalendarDays },
   { label: "Notifications", icon: Bell },
-  { label: "Profile", icon: UserRound },
 ];
 
 export default function Sidebar() {
@@ -27,13 +26,18 @@ export default function Sidebar() {
       </div>
       <div id="user-dashboard-navigation" className={`user-dashboard-navigation${expanded ? " is-expanded" : ""}`}>
         <nav aria-label="Main navigation">
-          <Link className="user-dashboard-nav-item is-active" to="/user/dashboard" aria-current="page" onClick={() => setExpanded(false)}>
+          <NavLink className={({ isActive }) => `user-dashboard-nav-item${isActive ? " is-active" : ""}`} to="/user/dashboard" onClick={() => setExpanded(false)}>
             <House size={20} aria-hidden="true" /><span>Home</span>
-          </Link>
+          </NavLink>
           {upcomingItems.map(({ label, icon: Icon }) => (
             <button className="user-dashboard-nav-item" key={label} type="button" disabled title={`${label} — coming soon`}>
               <Icon size={20} aria-hidden="true" /><span>{label}</span>
             </button>
+          ))}
+          {[{ path: "profile", label: "Profile", icon: UserRound }, { path: "settings", label: "Settings", icon: Settings }].map(({ path, label, icon: Icon }) => (
+            <NavLink key={path} to={`/user/${path}`} className={({ isActive }) => `user-dashboard-nav-item${isActive ? " is-active" : ""}`} onClick={() => setExpanded(false)}>
+              <Icon size={20} aria-hidden="true" /><span>{label}</span>
+            </NavLink>
           ))}
         </nav>
         <div className="user-dashboard-sidebar-footer">

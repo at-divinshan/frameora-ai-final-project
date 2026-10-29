@@ -5,6 +5,7 @@ import {
   readStoredSession, storeSession,
 } from "../services/authService";
 import { clearGoogleFlow } from "../services/googleAuthService";
+import { getProfile, getProfilePicture } from "../services/userService";
 
 export const AuthContext = createContext(null);
 
@@ -14,6 +15,47 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [authError, setAuthError] = useState("");
   const revision = useRef(0);
+  const userRef = useRef(user);
+  userRef.current = user;
+  const [pictureUrl, setPictureUrl] = useState(null);
+  const [pictureLoading, setPictureLoading] = useState(false);
+  const [pictureError, setPictureError] = useState(false);
+  const [pictureRevision, setPictureRevision] = useState(0);
+  const refreshPicture = useCallback(() => setPictureRevision((value) => value + 1), []);
+
+  const refreshProfile = useCallback(async (signal) => {
+    const started = revision.current;
+    const identity = userRef.current;
+    if (!identity) throw new Error("Sign in to view your profile.");
+    const profile = await getProfile(signal);
+    if (started !== revision.current || signal?.aborted || profile.id !== identity.id || profile.role !== identity.role) {
+      throw new Error("Profile request was cancelled.");
+    }
+    setUser(profile);
+    return profile;
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    let objectUrl;
+    setPictureUrl(null);
+    setPictureError(false);
+    setPictureLoading(Boolean(user?.id));
+    if (user?.id) {
+      getProfilePicture(controller.signal).then((blob) => {
+        if (!active || !blob) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPictureUrl(objectUrl);
+      }).catch(() => { if (active) setPictureError(true); })
+        .finally(() => { if (active) setPictureLoading(false); });
+    }
+    return () => {
+      active = false;
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [user?.id, user?.profile_image, session?.accessToken, pictureRevision]);
 
   const logout = useCallback((message = "") => {
     revision.current += 1;
@@ -119,7 +161,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, authError, login, logout, googleAuthenticate }}>
+    <AuthContext.Provider value={{ user, loading, authError, login, logout, googleAuthenticate,
+      refreshProfile, pictureUrl, pictureLoading, pictureError, refreshPicture }}>
       {children}
     </AuthContext.Provider>
   );

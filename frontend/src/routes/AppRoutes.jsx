@@ -1,3 +1,9 @@
+import UserProfile from "../pages/user/Profile";
+import UserSettings from "../pages/user/Settings";
+import OwnerProfile from "../pages/owner/Profile";
+import OwnerSettings from "../pages/owner/Settings";
+import AdminProfile from "../pages/admin/Profile";
+import AdminSettings from "../pages/admin/Settings";
 import { useEffect } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import Login from "../pages/auth/Login";
@@ -53,6 +59,8 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         {Object.entries(DASHBOARD_ROUTES).map(([role, path]) => (
           <Route key={role} element={<RoleRoute role={role} />}>
+            <Route path={`/${role}/profile`} element={role === "user" ? <UserProfile /> : role === "owner" ? <OwnerProfile /> : <AdminProfile />} />
+            <Route path={`/${role}/settings`} element={role === "user" ? <UserSettings /> : role === "owner" ? <OwnerSettings /> : <AdminSettings />} />
             <Route path={path} element={role === "user" ? <UserDashboard /> : role === "owner" ? <OwnerDashboard /> : role === "admin" ? <AdminDashboard /> : null} />
           </Route>
         ))}

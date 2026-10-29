@@ -73,3 +73,26 @@ class TokenResponse(BaseModel):
     token_type: Literal["bearer"] = "bearer"
     expires_in: int
     user: AuthUser
+
+
+class NewPassword(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, hide_input_in_errors=True)
+
+    new_password: str = Field(min_length=8, max_length=128, repr=False)
+    confirm_password: str = Field(min_length=8, max_length=128, repr=False)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_policy(cls, value):
+        return RegisterRequest.password_contains_both_cases(value)
+
+    @field_validator("confirm_password")
+    @classmethod
+    def matching_password(cls, value, info):
+        if value != info.data.get("new_password"):
+            raise ValueError("Passwords do not match.")
+        return value
+
+
+class PasswordChange(NewPassword):
+    current_password: str = Field(min_length=1, max_length=128, repr=False)

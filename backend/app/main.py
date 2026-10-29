@@ -13,7 +13,9 @@ from app.core.config import settings
 from app.database.connection import check_database_connection, engine
 from app.routers.auth import router as auth_router
 from app.routers.google_auth import router as google_auth_router
+from app.routers.users import router as users_router
 from app.services.oauth_transaction_store import close_store
+from app.services.rate_limit_service import close_rate_limits
 
 
 class GoogleAccessLogFilter(logging.Filter):
@@ -31,10 +33,22 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         close_store()
+        close_rate_limits()
         engine.dispose()
 
 
 app = FastAPI(title="Frameora AI", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def picture_response_protection(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/users/") and request.url.path.rstrip("/").endswith("/picture"):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-site"
+    return response
 
 
 @app.middleware("http")
@@ -59,11 +73,12 @@ app.add_middleware(
         (settings.frontend_origin,) if settings.frontend_origin else ()
     )))),
     allow_credentials=settings.google_auth_enabled,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
 app.include_router(auth_router)
 app.include_router(google_auth_router)
+app.include_router(users_router)
 
 
 @app.exception_handler(RequestValidationError)

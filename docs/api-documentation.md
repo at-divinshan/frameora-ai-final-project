@@ -481,3 +481,125 @@ offline ID-token tests use real RSA signatures and mocked network responses.
 SQLite compare-and-swap concurrency does not establish MySQL row-lock behavior.
 Live MySQL migration/persistence/locking, real Google consent and browser/frontend
 integration remain untested and are required before production activation.
+
+## Studio Owner onboarding — studio setup only
+
+`GET /owner/onboarding` and `PUT /owner/studio` require existing Bearer JWT
+validation and database role `owner`. Missing/invalid JWT: 401; User/Admin: 403.
+No query parameters or client owner IDs are accepted. Successful responses use
+`Cache-Control: no-store` and `Pragma: no-cache`.
+
+GET returns a missing profile as the following, without creating any row:
+
+```json
+{"onboarding_status":"pending_studio","onboarding_completed_at":null,"next_step":"studio_setup","studio":null}
+```
+
+Existing profiles expose only the five studio fields in `studio`, plus onboarding
+state and completion time. `next_step` maps pending_studio to studio_setup,
+pending_plan to subscription_selection, and completed to dashboard. Unknown stored
+states fail closed with 503 rather than silently resetting progress.
+
+PUT accepts a full studio replacement:
+
+```json
+{
+  "studio_name": "Example Studio",
+  "studio_phone": "+94 77 123 4567",
+  "studio_address": "12 Example Street",
+  "studio_city": "Jaffna",
+  "studio_description": null
+}
+```
+
+Name/address/city are trimmed, required, at least two characters, with maxima
+150/255/100. Phone requires 7–15 ASCII digits, optionally a leading +, spaces,
+parentheses or hyphens, with a 20-character formatted maximum. Description is
+optional plain text, at most 2,000 characters; omitted/null/blank clears it.
+Control/format characters are rejected, except description line feeds and tabs.
+Unknown/protected fields, query parameters and invalid values receive 422.
+
+PUT returns 200 with the same structure as GET. A new/pending_studio profile
+becomes pending_plan without Admin approval. Later edits preserve pending_plan or
+completed state and the completion timestamp. No subscription, credit, trial,
+payment, identity or personal-profile fields are written.
+
+Writes lock the authenticated User row first, recheck its role, then perform a
+locking/current profile read before insertion/update. This serializes compliant
+MySQL writers even when the profile is initially absent. The existing unique
+user_id constraint is the final duplicate guard. Integrity conflicts roll back
+and return sanitized 409; database errors use the existing sanitized 503 handler.
+
+CORS permits PUT from existing approved origins. Public/personal profile schemas
+and authentication behavior remain unchanged. These APIs use the existing
+UserProfile schema, independently of unapplied subscription migration 003.
+
+Tests use disposable SQLite accounts and test-signed JWTs, with MySQL query
+compilation and lock-order checks. Actual InnoDB contention and migration rehearsal
+are NOT verified by SQLite. Neither Day 4 activation flag is enabled.
+
+## Owner subscriptions — migration 003 gated
+
+The following authenticated owner-only routes are implemented:
+
+- `GET /owner/plans` returns the verified Basic, Trial and Pro catalogue.
+- `GET /owner/subscription` returns the effective plan, current-period credits,
+  period boundaries and whether the one-time trial remains available.
+- `POST /owner/subscription/basic` activates Free Basic.
+- `POST /owner/subscription/trial` explicitly starts the Free Trial.
+
+Activation requests accept only an `idempotency_key` in the JSON body; roles,
+credits, plan status, timestamps and payment claims are never accepted from the
+client. Both activation routes require complete studio details. Activation and
+the onboarding completion timestamp are committed together.
+
+Basic grants 10 credits per monthly anniversary without carryover; repeated
+selection does not reset its anniversary or duplicate a period grant. The
+14-day trial grants 100 total credits once per owner, including owners who
+already existed before onboarding. An owner on Basic may start an unused trial.
+Expired Trial or Paid Pro entitlements resolve to Basic from the exact expiry
+timestamp. There is intentionally no Paid Pro activation route or payment
+simulation.
+
+These endpoints require the approved migration 003 tables, columns, generated
+columns, required unique constraints and ownership foreign keys, plus the
+verified owner catalogue. If any of those prerequisites is missing, the
+endpoint fails closed with 503; application startup does not apply or repair
+the migration. Migration 003 has
+NOT been applied to `frameora_db`; the subscription endpoints have only been
+tested with disposable SQLite fixtures. InnoDB locking/concurrency and actual
+post-migration schema compatibility still require an isolated MySQL rehearsal.
+
+### Steps 38–39: studio photos and owner dashboard
+
+Studio Setup, Subscription Selection and Owner Dashboard reuse owner JWT authorization.
+Completed owners may revisit `/owner/subscription` to explicitly start an unused trial,
+or `/owner/studio-setup` to edit studio details. Navigation re-fetches onboarding;
+unknown/failed onboarding state fails closed with retry. No page visit activates a plan.
+
+Subscription Selection reads `/owner/plans` and `/owner/subscription`, and posts only
+`{ "idempotency_key": "<random UUID>" }` to `/owner/subscription/basic` or `/trial`.
+The same key is retained for retries while the page is mounted. Repeated requests after
+reload remain protected by owner locking and lifetime/active/grant uniqueness; an old
+trial retry with a new key may correctly receive 409. On success the UI re-fetches both
+subscription and onboarding before navigating. Pro has no checkout or activation route.
+Missing migration 003 produces 503 and an unavailable/retry UI, not sample plan data.
+The shared service returns effective expiry fallback/period allowance read-only on GET;
+POST materializes current grants. No spend or project/share enforcement API is added here.
+
+New studio-photo routes (all authenticated role `owner`, self only):
+- `GET /owner/studio/photo-status`: `{available, has_photo}`; missing photo column -> available:false.
+- `POST /owner/studio/photo`: raw JPEG/PNG/WebP bytes, max 5 MiB streamed; returns status above.
+- `GET /owner/studio/photo`: authorized PNG bytes with no-store/nosniff; 404 if missing.
+- `DELETE /owner/studio/photo`: removes the reference and best-effort private file cleanup.
+
+Photo mutation requires an existing studio profile. Upload first saves required studio
+fields if necessary. Separate migration 004 is proposed, not applied; missing support
+returns 503 without files/records written. All images are decoded, limited to 16 MP,
+animations rejected, normalized to metadata-free PNG within 512x512, and privately stored
+using existing PROFILE_IMAGE_DIR. No extra package or public image endpoint is introduced.
+
+Dashboard uses onboarding studio details, photo self routes, catalogue and shared
+subscription status. Projects/share counts remain explicitly unavailable, and unfinished
+features stay disabled. Plan limits are displayed from the catalogue, not fabricated counts.
+No new public data exposure, dashboard aggregate endpoint or payment integration is added.

@@ -23,14 +23,14 @@ def invalid_image():
     return HTTPException(422, "Upload a valid, non-animated JPEG or PNG image of at most 16 megapixels.")
 
 
-def normalize_image(data: bytes) -> bytes:
+def normalize_image(data: bytes, *, formats=("JPEG", "PNG")) -> bytes:
     if len(data) > MAX_UPLOAD:
         raise HTTPException(413, "Profile pictures must not exceed 5 MiB.")
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             with Image.open(io.BytesIO(data)) as source:
-                if source.format not in ("JPEG", "PNG") or getattr(source, "n_frames", 1) != 1:
+                if source.format not in formats or getattr(source, "n_frames", 1) != 1:
                     raise invalid_image()
                 if source.width * source.height > MAX_PIXELS:
                     raise invalid_image()

@@ -16,8 +16,9 @@ const navigation = [
   { label: "AI Preview", icon: Images },
   { label: "Equipment", icon: Camera },
   { label: "Share Links", icon: Link2 },
-  { label: "Subscription", icon: CreditCard },
+  { label: "Subscription", icon: CreditCard, path: "/owner/subscription" },
   { label: "Notifications", icon: Bell },
+  { label: "Studio Profile", icon: Camera, path: "/owner/studio-setup" },
   { label: "Profile", icon: UserRound, path: "/owner/profile" },
   { label: "Settings", icon: Settings, path: "/owner/settings" },
 ];

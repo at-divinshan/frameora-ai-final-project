@@ -9,11 +9,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.models.ai_generation import AIGeneration
 from app.core.config import settings
 from app.database.connection import check_database_connection, engine
 from app.routers.auth import router as auth_router
+from app.routers.admin import router as admin_router
 from app.routers.google_auth import router as google_auth_router
 from app.routers.users import router as users_router
+from app.routers.owner import router as owner_router
+from app.routers.subscriptions import router as subscriptions_router
 from app.services.oauth_transaction_store import close_store
 from app.services.rate_limit_service import close_rate_limits
 
@@ -73,12 +77,15 @@ app.add_middleware(
         (settings.frontend_origin,) if settings.frontend_origin else ()
     )))),
     allow_credentials=settings.google_auth_enabled,
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(google_auth_router)
 app.include_router(users_router)
+app.include_router(owner_router)
+app.include_router(subscriptions_router)
 
 
 @app.exception_handler(RequestValidationError)

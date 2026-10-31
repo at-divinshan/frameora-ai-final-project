@@ -13,9 +13,12 @@ import GoogleCallback from "../pages/auth/GoogleCallback";
 import GoogleLink from "../pages/auth/GoogleLink";
 import UserDashboard from "../pages/user/Dashboard";
 import OwnerDashboard from "../pages/owner/Dashboard";
+import StudioSetup from "../pages/owner/StudioSetup";
+import SubscriptionSelection from "../pages/owner/Subscription";
 import AdminDashboard from "../pages/admin/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleRoute from "./RoleRoute";
+import OwnerOnboardingRoute from "./OwnerOnboardingRoute";
 import useAuth from "../hooks/useAuth";
 import { DASHBOARD_ROUTES, dashboardRoute } from "../utils/constants";
 
@@ -59,9 +62,21 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         {Object.entries(DASHBOARD_ROUTES).map(([role, path]) => (
           <Route key={role} element={<RoleRoute role={role} />}>
-            <Route path={`/${role}/profile`} element={role === "user" ? <UserProfile /> : role === "owner" ? <OwnerProfile /> : <AdminProfile />} />
-            <Route path={`/${role}/settings`} element={role === "user" ? <UserSettings /> : role === "owner" ? <OwnerSettings /> : <AdminSettings />} />
-            <Route path={path} element={role === "user" ? <UserDashboard /> : role === "owner" ? <OwnerDashboard /> : role === "admin" ? <AdminDashboard /> : null} />
+            {role === "owner" ? (
+              <Route element={<OwnerOnboardingRoute />}>
+                <Route path="/owner/profile" element={<OwnerProfile />} />
+                <Route path="/owner/settings" element={<OwnerSettings />} />
+                <Route path="/owner/studio-setup" element={<StudioSetup />} />
+                <Route path="/owner/subscription" element={<SubscriptionSelection />} />
+                <Route path={path} element={<OwnerDashboard />} />
+              </Route>
+            ) : (
+              <>
+                <Route path={`/${role}/profile`} element={role === "user" ? <UserProfile /> : <AdminProfile />} />
+                <Route path={`/${role}/settings`} element={role === "user" ? <UserSettings /> : <AdminSettings />} />
+                <Route path={path} element={role === "user" ? <UserDashboard /> : <AdminDashboard />} />
+              </>
+            )}
           </Route>
         ))}
       </Route>

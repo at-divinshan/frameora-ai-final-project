@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { BarChart3, Bell, Building2, CalendarDays, CreditCard, FolderOpen, House, LogOut, Menu, Moon, Plus, Search, Settings, Sun, Users, UserRound, X } from "lucide-react";
 import AccountAvatar from "../common/AccountAvatar";
 import FrameoraLogo from "../common/FrameoraLogo";
@@ -9,7 +9,7 @@ import "../../styles/dashboard.css";
 
 const navigation = [
   { label: "Users", icon: Users },
-  { label: "Studios", icon: Building2 },
+  { label: "Studios", icon: Building2, path: "/admin/dashboard#studio-owners" },
   { label: "Projects", icon: FolderOpen },
   { label: "Bookings", icon: CalendarDays },
   { label: "Payments", icon: CreditCard },
@@ -24,6 +24,12 @@ export default function AdminLayout({ children, title = "Manage Users & Studio O
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const dark = theme === "dark";
+  const { pathname, hash } = useLocation();
+  const currentPath = pathname + (pathname === '/admin/dashboard' && hash === '#studio-owners' ? hash : '');
+  const active = path => currentPath === path;
+  useEffect(() => {
+    if (pathname === '/admin/dashboard') document.getElementById(hash === '#studio-owners' ? 'studio-owners' : 'admin-dashboard-content')?.scrollIntoView({ block: 'start' });
+  }, [pathname, hash]);
 
   return (
     <div className="admin-dashboard">
@@ -38,9 +44,9 @@ export default function AdminLayout({ children, title = "Manage Users & Studio O
         </div>
         <div id="admin-navigation" className={`admin-navigation${menuOpen ? " is-open" : ""}`}>
           <nav aria-label="Admin navigation">
-            <NavLink className={({ isActive }) => `admin-nav-item${isActive ? " is-active" : ""}`} to="/admin/dashboard" onClick={() => setMenuOpen(false)}><House size={18} aria-hidden="true" />Dashboard</NavLink>
+            <Link className={`admin-nav-item${active("/admin/dashboard") ? " is-active" : ""}`} aria-current={active("/admin/dashboard") ? "page" : undefined} to="/admin/dashboard" onClick={() => setMenuOpen(false)}><House size={18} aria-hidden="true" />Dashboard</Link>
             {navigation.map(({ label, icon: Icon, path }) => path ? (
-              <NavLink key={label} to={path} className={({ isActive }) => `admin-nav-item${isActive ? " is-active" : ""}`} onClick={() => setMenuOpen(false)}><Icon size={18} aria-hidden="true" />{label}</NavLink>
+              <Link key={label} to={path} aria-current={active(path) ? "page" : undefined} className={`admin-nav-item${active(path) ? " is-active" : ""}`} onClick={() => setMenuOpen(false)}><Icon size={18} aria-hidden="true" />{label}</Link>
             ) : (
               <button className="admin-nav-item" key={label} type="button" disabled title={`${label} — coming soon`}><Icon size={18} aria-hidden="true" />{label}</button>
             ))}

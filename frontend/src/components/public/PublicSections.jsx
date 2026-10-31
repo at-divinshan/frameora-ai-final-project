@@ -10,7 +10,7 @@ export function PageMeta({ title, description }) {
     const existing = !!meta;
     const oldDescription = meta?.content;
     if (!meta) { meta = document.createElement('meta'); meta.name = 'description'; document.head.appendChild(meta); }
-    document.title = `${title} | Frameora AI`;
+    document.title = title === "Frameora AI" ? title : `${title} | Frameora AI`;
     meta.content = description;
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
     return () => { document.title = oldTitle; if (existing) meta.content = oldDescription; else meta.remove(); };

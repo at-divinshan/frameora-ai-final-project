@@ -2,6 +2,7 @@
 
 from contextlib import asynccontextmanager
 import logging
+import re
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.exceptions import RequestValidationError
@@ -18,6 +19,7 @@ from app.routers.google_auth import router as google_auth_router
 from app.routers.users import router as users_router
 from app.routers.owner import router as owner_router
 from app.routers.subscriptions import router as subscriptions_router
+from app.routers.plans import router as plans_router
 from app.services.oauth_transaction_store import close_store
 from app.services.rate_limit_service import close_rate_limits
 
@@ -29,6 +31,7 @@ class GoogleAccessLogFilter(logging.Filter):
 
 
 logging.getLogger("uvicorn.access").addFilter(GoogleAccessLogFilter())
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -86,6 +89,7 @@ app.include_router(google_auth_router)
 app.include_router(users_router)
 app.include_router(owner_router)
 app.include_router(subscriptions_router)
+app.include_router(plans_router)
 
 
 @app.exception_handler(RequestValidationError)
@@ -100,6 +104,21 @@ async def validation_error_handler(request, exc):
 
 @app.exception_handler(SQLAlchemyError)
 async def database_error_handler(request, exc):
+    original = getattr(exc, "orig", None)
+    original_args = getattr(original, "args", ())
+    raw_code = original_args[0] if original_args else None
+    driver_code = raw_code if isinstance(raw_code, int) else (
+        raw_code if isinstance(raw_code, str) and raw_code.isdecimal() else None
+    )
+    raw_sqlstate = getattr(original, "sqlstate", None) or getattr(original, "pgcode", None)
+    sqlstate = raw_sqlstate if isinstance(raw_sqlstate, str) and re.fullmatch(r"[A-Z0-9]{5}", raw_sqlstate) else None
+    logger.error(
+        "Database operation failed: exception_class=%s driver_class=%s driver_code=%s sqlstate=%s",
+        type(exc).__name__,
+        type(original).__name__ if original is not None else "unavailable",
+        driver_code if driver_code is not None else "unavailable",
+        sqlstate if sqlstate is not None else "unavailable",
+    )
     return JSONResponse(
         status_code=503,
         content={"detail": "The database is temporarily unavailable. Please try again later."},

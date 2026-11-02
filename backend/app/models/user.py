@@ -4,7 +4,7 @@ from datetime import datetime
 
 from sqlalchemy import BigInteger, Boolean, DateTime, Index, Integer, JSON, String, text
 from sqlalchemy.dialects.mysql import VARBINARY, BIGINT
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 
@@ -32,3 +32,4 @@ class User(Base):
         BigInteger().with_variant(BIGINT(unsigned=True), "mysql"),
         nullable=False, server_default=text("0"), deferred=True,
     )
+    photography_plans: Mapped[list["PhotographyPlan"]] = relationship(back_populates="user")

@@ -1,4 +1,4 @@
-# Current sprint verification — Step 221
+# Current sprint verification — Step 225
 
 Updated 2026-10-31 (Asia/Colombo). This section supersedes the historical release
 status and test totals below. Historical execution evidence is retained, not rewritten
@@ -6,12 +6,33 @@ as newly executed verification.
 
 ## Current decision
 
-**Ready for a scoped implementation commit with documented verification limitations;
-not a claim of complete browser/network or MySQL concurrency sign-off.** No staging,
-commit or push has been performed. Include the entire reviewed 50-file manifest below;
-committing only tracked modifications would omit required modules and tests.
+**Implementation committed with documented verification limitations; no complete
+browser/network or MySQL concurrency sign-off.** Sprint implementation commit
+`1d7d2aa` contains the reviewed 50-file manifest. The user reports that this commit
+is visible on GitHub `main`; remote visibility was not independently rechecked in
+Step 225. This step updates documentation only: no tests, code changes, database
+operations, plan activations, commits or pushes were performed.
 
-## Observed browser evidence (Step 220; not rerun in Step 221)
+## User-observed evidence reported in Step 225
+
+- PASS (user-observed): Owner and Admin dashboards display correct real data.
+- PASS (user-observed): Owner plans/subscription requests and Admin owner-detail/photo
+  API requests returned HTTP 200.
+- PASS (user-observed): both Admin → Owner and Owner → Admin wrong-role navigation
+  redirected safely.
+- Regression evidence: **69 backend and 42 frontend tests passed**, as recorded in
+  the Step 221 execution results below and reaffirmed by the user. Not rerun in Step 225.
+- Git evidence (user-observed): implementation commit `1d7d2aa` is visible on GitHub `main`.
+- FOLLOW-UP: the user observed a **profile-picture HTTP 404 in the Admin browser**.
+  The precise failing request and cause have not been established. Do not infer a
+  missing image, authorization defect, storage failure or relationship to studio photos.
+  Investigate separately using read-only request/status inspection without exposing credentials.
+
+The HTTP 200 observations do not establish that requests were triggered by tab focus
+or that no write requests occurred. Tab-focus GET behavior, absence of write requests,
+natural expiry behavior and MySQL concurrency remain **UNVERIFIED**.
+
+## Earlier agent-observed browser evidence (Step 220; not rerun in Step 225)
 
 - PASS: authenticated Owner dashboard displayed saved studio details/photo, Free Trial,
   100 credits, expiry and catalogue limits. No personal contact information is reproduced here.
@@ -20,8 +41,8 @@ committing only tracked modifications would omit required modules and tests.
 - PASS: Admin navigating to `/owner/dashboard` redirected to `/admin/dashboard`.
 - Earlier observed PASS: anonymous Owner/Admin dashboard navigation redirected to Login.
 - BLOCKED / manual verification remains: tab-focus request methods/statuses, absence of
-  write requests in the browser request log, Owner-to-Admin wrong-role navigation and
-  natural subscription-expiry boundary refresh. Visible page contents do not prove these.
+  write requests in the browser request log and natural subscription-expiry boundary
+  refresh. Owner-to-Admin navigation now has user-observed PASS evidence above. Visible page contents do not prove these.
 - No activation, save, upload or removal was performed during browser verification.
 
 ### Remaining manual Network checks
@@ -34,10 +55,9 @@ Preserve log, and show Method and Status. Do not export HAR, copy headers, or ex
 2. Admin: open View Details, switch tabs and return; expect GET `/admin/owners/{id}`
    and its photo GET when present. Current focus refresh applies to owner details,
    not the Admin summary/list counts.
-3. In an Owner session, visit `/admin/dashboard`; confirm safe redirection and no Admin data.
-4. Observe an existing natural expiry without changing clocks, records or activating plans;
+3. Observe an existing natural expiry without changing clocks, records or activating plans;
    confirm effective fallback and displayed credits/period refresh.
-5. Confirm no POST, PUT, PATCH or DELETE occurred during these read-only checks.
+4. Confirm no POST, PUT, PATCH or DELETE occurred during these read-only checks.
 
 ## Final safe checks executed in Step 221
 
@@ -95,8 +115,9 @@ Frontend checks are SSR, pure-function and mocked-request tests, not browser E2E
 
 ## Reviewed final pending-file manifest
 
-M = modified tracked file; A = existing untracked file to include in the future commit.
-Nothing is staged. All entries belong to the accumulated sprint, not just Step 221.
+Historical Step 221 manifest, included in implementation commit `1d7d2aa`.
+M/A describe pre-commit status (modified tracked / untracked), not current Git status.
+All entries belong to the accumulated sprint, not just Step 221.
 Only this verification document was edited in Step 221. Prior migration review documents
 are historical preparation records, not permission to execute SQL.
 

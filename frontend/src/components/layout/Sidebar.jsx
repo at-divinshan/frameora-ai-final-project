@@ -29,7 +29,11 @@ export default function Sidebar() {
           <NavLink className={({ isActive }) => `user-dashboard-nav-item${isActive ? " is-active" : ""}`} to="/user/dashboard" onClick={() => setExpanded(false)}>
             <House size={20} aria-hidden="true" /><span>Home</span>
           </NavLink>
-          {upcomingItems.map(({ label, icon: Icon }) => (
+          {upcomingItems.map(({ label, icon: Icon }) => label === "My Plans" ? (
+            <NavLink key={label} to="/user/plans" className={({ isActive }) => `user-dashboard-nav-item${isActive ? " is-active" : ""}`} onClick={() => setExpanded(false)}>
+              <Icon size={20} aria-hidden="true" /><span>{label}</span>
+            </NavLink>
+          ) : (
             <button className="user-dashboard-nav-item" key={label} type="button" disabled title={`${label} — coming soon`}>
               <Icon size={20} aria-hidden="true" /><span>{label}</span>
             </button>

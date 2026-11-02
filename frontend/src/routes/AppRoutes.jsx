@@ -12,6 +12,8 @@ import ForgotPassword from "../pages/auth/ForgotPassword";
 import GoogleCallback from "../pages/auth/GoogleCallback";
 import GoogleLink from "../pages/auth/GoogleLink";
 import UserDashboard from "../pages/user/Dashboard";
+import CreatePlan from "../pages/user/CreatePlan";
+import MyPlans from "../pages/user/MyPlans";
 import OwnerDashboard from "../pages/owner/Dashboard";
 import StudioSetup from "../pages/owner/StudioSetup";
 import SubscriptionSelection from "../pages/owner/Subscription";
@@ -75,6 +77,12 @@ export default function AppRoutes() {
                 <Route path={`/${role}/profile`} element={role === "user" ? <UserProfile /> : <AdminProfile />} />
                 <Route path={`/${role}/settings`} element={role === "user" ? <UserSettings /> : <AdminSettings />} />
                 <Route path={path} element={role === "user" ? <UserDashboard /> : <AdminDashboard />} />
+                {role === "user" && (
+                  <>
+                    <Route path="/user/plans/create" element={<CreatePlan />} />
+                    <Route path="/user/plans" element={<MyPlans />} />
+                  </>
+                )}
               </>
             )}
           </Route>

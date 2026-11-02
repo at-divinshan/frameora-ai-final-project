@@ -603,3 +603,23 @@ Dashboard uses onboarding studio details, photo self routes, catalogue and share
 subscription status. Projects/share counts remain explicitly unavailable, and unfinished
 features stay disabled. Plan limits are displayed from the catalogue, not fabricated counts.
 No new public data exposure, dashboard aggregate endpoint or payment integration is added.
+
+## Normal User photography plans
+
+The authenticated Normal User API exposes:
+
+- `POST /plans` creates one personal photography plan and returns `201`.
+- `GET /plans` lists only plans owned by the authenticated account. An account
+  with no plans receives `200` and an empty array.
+
+Create accepts `photography_type` (1–50 characters), `people_count` (integer
+1–10), `environment` (1–20 characters), optional `location` (up to 255
+characters), optional `shoot_datetime`, and optional JSON `preferences`.
+Unknown fields are rejected. In particular, `user_id` and `project_id` cannot
+be supplied by the client. Ownership comes from the authenticated JWT identity;
+new plans keep `project_id` null.
+
+Responses include the plan ID, project association, supported plan fields and
+creation timestamp. This feature maps the existing `PhotographyPlan` table and
+does not create or alter database schema. Isolated API tests use disposable
+SQLite; no live MySQL create requests are used for verification.

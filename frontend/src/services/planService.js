@@ -24,6 +24,26 @@ export async function deletePlan(planId) {
   await api.delete(`/plans/${planId}`);
 }
 
+export async function getPlanSuggestions(planId) {
+  const { data } = await api.post(`/plans/${planId}/suggestions`);
+  return data;
+}
+
+export function getSuggestionErrorMessage(error) {
+  switch (error.response?.status) {
+    case 401:
+      return "Your session has expired. Please sign in again.";
+    case 403:
+      return "You don’t have permission to request suggestions for this plan.";
+    case 404:
+      return "This photography plan could not be found. It may have been deleted.";
+    case 503:
+      return "AI suggestions are not available yet. Please try again later.";
+    default:
+      return "Unable to get photography suggestions. Please try again.";
+  }
+}
+
 export function getPlanErrorMessage(error, action = "save") {
   switch (error.response?.status) {
     case 401:

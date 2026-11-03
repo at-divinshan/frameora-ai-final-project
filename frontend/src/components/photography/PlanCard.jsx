@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, MapPin, Pencil, Trash2, Users } from "lucide-react";
+import { CalendarDays, MapPin, Pencil, Sparkles, Trash2, Users } from "lucide-react";
 import PlanDeleteDialog from "./PlanDeleteDialog";
-import { deletePlan, getPlanErrorMessage } from "../../services/planService";
+import {
+  deletePlan,
+  getPlanErrorMessage,
+  getPlanSuggestions,
+  getSuggestionErrorMessage,
+} from "../../services/planService";
 
 function formatDate(value) {
   if (!value) return "Not scheduled";
@@ -25,20 +30,44 @@ function preferenceEntries(value) {
     try { value = JSON.parse(value); } catch { return []; }
   }
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
-  return preferenceLabels.flatMap(([key, label]) => {
+  const entries = preferenceLabels.flatMap(([key, label]) => {
     const item = Object.hasOwn(value, key) ? value[key] : null;
     // Ignore malformed structured values; React safely escapes displayed text.
     if (typeof item !== "string" && typeof item !== "number" && typeof item !== "boolean") return [];
     const text = String(item).trim();
     return text ? [[key, label, text]] : [];
   });
+  const equipment = value.equipment;
+  if (equipment && typeof equipment === "object" && !Array.isArray(equipment)) {
+    const parts = [];
+    if (typeof equipment.device_type === "string") parts.push(equipment.device_type);
+    if (typeof equipment.camera_model === "string" && equipment.camera_model.trim()) parts.push(equipment.camera_model.trim());
+    if (typeof equipment.lens === "string" && equipment.lens.trim()) parts.push(`Lens: ${equipment.lens.trim()}`);
+    if (typeof equipment.additional_equipment === "string" && equipment.additional_equipment.trim()) {
+      parts.push(`Additional equipment: ${equipment.additional_equipment.trim()}`);
+    }
+    if (parts.length) entries.push(["equipment", "Photography Equipment", parts.join(" · ")]);
+  }
+  return entries;
 }
+
+const suggestionCategories = [
+  ["pose_suggestions", "Pose Suggestions"],
+  ["camera_angles", "Camera Angles"],
+  ["lighting_tips", "Lighting Tips"],
+  ["camera_settings", "Camera Settings"],
+  ["composition_tips", "Composition Tips"],
+  ["photography_tools", "Photography Tools"],
+];
 
 export default function PlanCard({ plan, onDeleted }) {
   const preferences = preferenceEntries(plan.preferences);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [suggestions, setSuggestions] = useState(null);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState("");
   const deleteTrigger = useRef(null);
   const hadDialog = useRef(false);
 
@@ -61,6 +90,18 @@ export default function PlanCard({ plan, onDeleted }) {
       setDeleteError(getPlanErrorMessage(error, "delete"));
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function loadSuggestions() {
+    setSuggestionsLoading(true);
+    setSuggestionsError("");
+    try {
+      setSuggestions(await getPlanSuggestions(plan.id));
+    } catch (error) {
+      setSuggestionsError(getSuggestionErrorMessage(error));
+    } finally {
+      setSuggestionsLoading(false);
     }
   }
 
@@ -88,6 +129,15 @@ export default function PlanCard({ plan, onDeleted }) {
         </details>
       )}
       <div className="user-plan-card-actions">
+        <button
+          className="user-plan-action-secondary"
+          type="button"
+          onClick={loadSuggestions}
+          disabled={suggestionsLoading}
+          aria-label={`Get AI suggestions for ${plan.photography_type} plan`}
+        >
+          <Sparkles size={15} aria-hidden="true" /> {suggestionsLoading ? "Getting Suggestions…" : "AI Suggestions"}
+        </button>
         <Link
           className="user-dashboard-create-button"
           to={`/user/plans/${plan.id}/edit`}
@@ -108,6 +158,19 @@ export default function PlanCard({ plan, onDeleted }) {
           <Trash2 size={15} aria-hidden="true" /> Delete
         </button>
       </div>
+      {suggestionsError && <p className="user-plan-message is-error" role="alert">{suggestionsError}</p>}
+      {suggestions && (
+        <section className="user-plan-suggestions" aria-label="AI photography suggestions" aria-live="polite">
+          {suggestionCategories.map(([key, label]) => (
+            <div key={key}>
+              <h3>{label}</h3>
+              <ul>
+                {suggestions[key].map((suggestion, index) => <li key={`${key}-${index}`}>{suggestion}</li>)}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
       {confirmingDelete && (
         <PlanDeleteDialog
           planName={plan.photography_type}

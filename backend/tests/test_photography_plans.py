@@ -5,6 +5,7 @@ import logging
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.dialects.mysql import VARBINARY
 from sqlalchemy.ext.compiler import compiles
@@ -16,6 +17,9 @@ from app.main import app
 from app.models.ai_generation import AIGeneration
 from app.models.photography_plan import PhotographyPlan
 from app.models.user import User
+from app.schemas.photography_suggestions import PhotographySuggestions
+from app.services.photography_suggestions import build_suggestions_prompt
+from app.services.suggestions_provider import get_suggestions_provider
 
 
 @compiles(VARBINARY, "sqlite")
@@ -143,6 +147,190 @@ class PhotographyPlanApiTests(unittest.TestCase):
             content='{"photography_type":"Portrait","people_count":2,"environment":"Outdoor","preferences":not-json}',
         )
         self.assertEqual(response.status_code, 422)
+
+    def test_equipment_is_optional_validated_and_merged_without_losing_preferences(self):
+        created = self.client.post(
+            "/plans",
+            headers=self.headers,
+            json=self.payload(preferences={
+                "photography_style": "Natural",
+                "unrelated_preference": "keep me",
+                "equipment": {
+                    "device_type": "Smartphone",
+                    "camera_model": "Pixel",
+                    "additional_equipment": "Tripod",
+                },
+            }),
+        )
+        self.assertEqual(created.status_code, 201)
+        plan_id = created.json()["id"]
+        self.assertEqual(
+            created.json()["preferences"]["equipment"],
+            {
+                "device_type": "Smartphone",
+                "camera_model": "Pixel",
+                "additional_equipment": "Tripod",
+            },
+        )
+
+        updated = self.client.patch(
+            f"/plans/{plan_id}",
+            headers=self.headers,
+            json={"preferences": {"equipment": {"camera_model": "iPhone"}}},
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["preferences"]["photography_style"], "Natural")
+        self.assertEqual(updated.json()["preferences"]["unrelated_preference"], "keep me")
+        self.assertEqual(updated.json()["preferences"]["equipment"], {
+            "device_type": "Smartphone",
+            "camera_model": "iPhone",
+            "additional_equipment": "Tripod",
+        })
+
+        cleared = self.client.patch(
+            f"/plans/{plan_id}",
+            headers=self.headers,
+            json={"preferences": {"equipment": {
+                "device_type": None,
+                "camera_model": None,
+                "lens": None,
+                "additional_equipment": None,
+            }}},
+        )
+        self.assertEqual(cleared.status_code, 200)
+        self.assertNotIn("equipment", cleared.json()["preferences"])
+        self.assertEqual(cleared.json()["preferences"]["unrelated_preference"], "keep me")
+
+        # Plans remain valid when no equipment details are supplied.
+        no_equipment = self.client.post(
+            "/plans", headers=self.headers, json=self.payload(preferences={"photography_style": "Cinematic"})
+        )
+        self.assertEqual(no_equipment.status_code, 201)
+        self.assertNotIn("equipment", no_equipment.json()["preferences"])
+
+        invalid_equipment = (
+            {"device_type": "Drone"},
+            {"camera_model": "x" * 101},
+            {"lens": "x" * 101},
+            {"additional_equipment": "x" * 301},
+            {"unknown": "not allowed"},
+        )
+        for equipment in invalid_equipment:
+            response = self.client.post(
+                "/plans", headers=self.headers,
+                json=self.payload(preferences={"equipment": equipment}),
+            )
+            self.assertEqual(response.status_code, 422, equipment)
+
+    def test_suggestions_endpoint_authentication_ownership_contract_and_prompt(self):
+        self.assertEqual(self.client.post("/plans/9876/suggestions").status_code, 401)
+        for token in ("3", "4"):
+            self.assertEqual(
+                self.client.post(f"/plans/9876/suggestions", headers=self.make_headers(token)).status_code,
+                403,
+            )
+        self.assertEqual(
+            self.client.post("/plans/9876/suggestions", headers=self.headers).status_code,
+            404,
+        )
+
+        created = self.client.post(
+            "/plans",
+            headers=self.headers,
+            json=self.payload(preferences={
+                "photography_style": "Natural",
+                "equipment": {
+                    "device_type": "Smartphone",
+                    "camera_model": "Pixel 9",
+                    "additional_equipment": "Tripod",
+                },
+            }),
+        ).json()
+        other_user = self.make_headers(2)
+        self.assertEqual(
+            self.client.post(
+                f"/plans/{created['id']}/suggestions", headers=other_user
+            ).status_code,
+            404,
+        )
+
+        class FakeProvider:
+            def __init__(self):
+                self.prompt = None
+
+            async def generate(self, prompt):
+                self.prompt = prompt
+                return PhotographySuggestions(
+                    pose_suggestions=["Pose 1", "Pose 2", "Pose 3"],
+                    camera_angles=["Angle 1", "Angle 2", "Angle 3"],
+                    lighting_tips=["Light 1", "Light 2", "Light 3"],
+                    camera_settings=["Setting 1", "Setting 2", "Setting 3"],
+                    composition_tips=["Composition 1", "Composition 2", "Composition 3"],
+                    photography_tools=["Tool 1", "Tool 2", "Tool 3"],
+                )
+
+        provider = FakeProvider()
+        app.dependency_overrides[get_suggestions_provider] = lambda: provider
+        try:
+            response = self.client.post(
+                f"/plans/{created['id']}/suggestions", headers=self.headers
+            )
+        finally:
+            app.dependency_overrides.pop(get_suggestions_provider, None)
+
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertEqual(set(result), {
+            "pose_suggestions", "camera_angles", "lighting_tips",
+            "camera_settings", "composition_tips", "photography_tools",
+        })
+        self.assertEqual(sum(len(items) for items in result.values()), 18)
+        self.assertIn("Pixel 9", provider.prompt)
+        self.assertIn("Smartphone", provider.prompt)
+        self.assertIn("only the equipment listed above", provider.prompt)
+        self.assertIn("photography_tools category must explain how to use the supplied equipment", provider.prompt)
+
+        with Session(self.engine) as db:
+            plan = db.get(PhotographyPlan, created["id"])
+            plan.preferences = None
+            prompt = build_suggestions_prompt(plan)
+        self.assertIn("device-neutral guidance", prompt)
+        self.assertIn("clearly labeled optional", prompt)
+
+    def test_suggestions_endpoint_reports_unconfigured_provider_without_external_call(self):
+        created = self.client.post("/plans", headers=self.headers, json=self.payload()).json()
+        response = self.client.post(
+            f"/plans/{created['id']}/suggestions", headers=self.headers
+        )
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("not available yet", response.json()["detail"])
+
+    def test_suggestions_response_requires_six_categories_and_three_short_strings_each(self):
+        response = {
+            "pose_suggestions": ["Pose 1", "Pose 2", "Pose 3"],
+            "camera_angles": ["Angle 1", "Angle 2", "Angle 3"],
+            "lighting_tips": ["Light 1", "Light 2", "Light 3"],
+            "camera_settings": ["Setting 1", "Setting 2", "Setting 3"],
+            "composition_tips": ["Composition 1", "Composition 2", "Composition 3"],
+            "photography_tools": ["Tool 1", "Tool 2", "Tool 3"],
+        }
+        self.assertEqual(
+            sum(len(items) for items in PhotographySuggestions.model_validate(response).model_dump().values()),
+            18,
+        )
+        invalid_responses = []
+        short_list = {**response, "camera_angles": ["Angle 1", "Angle 2"]}
+        invalid_responses.append(short_list)
+        extra_category = {**response, "other": ["Not allowed"]}
+        invalid_responses.append(extra_category)
+        blank_suggestion = {**response, "pose_suggestions": [" ", "Pose 2", "Pose 3"]}
+        invalid_responses.append(blank_suggestion)
+        long_suggestion = {**response, "pose_suggestions": ["x" * 241, "Pose 2", "Pose 3"]}
+        invalid_responses.append(long_suggestion)
+        for invalid in invalid_responses:
+            with self.subTest(response=invalid):
+                with self.assertRaises(ValidationError):
+                    PhotographySuggestions.model_validate(invalid)
 
     def test_get_patch_and_partial_null_updates_are_owner_scoped(self):
         created = self.client.post("/plans", headers=self.headers, json=self.payload()).json()

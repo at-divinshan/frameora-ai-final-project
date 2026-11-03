@@ -615,9 +615,22 @@ The authenticated Normal User API exposes:
 Create accepts `photography_type` (1–50 characters), `people_count` (integer
 1–10), `environment` (1–20 characters), optional `location` (up to 255
 characters), optional `shoot_datetime`, and optional JSON `preferences`.
+The existing preferences JSON may also contain an optional `equipment` object
+with `device_type` (`Smartphone`, `DSLR`, `Mirrorless`, or `Other`), `camera_model`
+(up to 100 characters), `lens` (up to 100 characters), and
+`additional_equipment` (up to 300 characters). All equipment values are optional.
+Patches merge supplied preference keys into existing preferences; null preference
+values remove those keys, and `preferences: null` clears all preferences.
 Unknown fields are rejected. In particular, `user_id` and `project_id` cannot
 be supplied by the client. Ownership comes from the authenticated JWT identity;
 new plans keep `project_id` null.
+
+- `POST /plans/{plan_id}/suggestions` requires an authenticated Normal User and
+  returns suggestions only for a plan owned by that account (missing and
+  non-owned plans both return `404`). Its response has exactly six categories,
+  each containing exactly three short suggestions. The Part 1 provider boundary
+  is intentionally unconfigured and returns `503`; no external AI service is
+  called until provider integration is added.
 
 Responses include the plan ID, project association, supported plan fields and
 creation timestamp. This feature maps the existing `PhotographyPlan` table and

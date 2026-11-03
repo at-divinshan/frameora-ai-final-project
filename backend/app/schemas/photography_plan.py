@@ -2,9 +2,9 @@
 
 from datetime import datetime, timezone
 import unicodedata
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 
 
 def clean_text(value):
@@ -31,6 +31,37 @@ def store_datetime_without_timezone(value):
     return value
 
 
+def clean_optional_equipment_text(value):
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    if any(unicodedata.category(char).startswith("C") for char in value):
+        raise ValueError("Enter valid text.")
+    return value
+
+
+class PhotographyEquipment(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    device_type: Literal["Smartphone", "DSLR", "Mirrorless", "Other"] | None = None
+    camera_model: StrictStr | None = Field(default=None, max_length=100)
+    lens: StrictStr | None = Field(default=None, max_length=100)
+    additional_equipment: StrictStr | None = Field(default=None, max_length=300)
+
+    _clean_text = field_validator("camera_model", "lens", "additional_equipment")(
+        clean_optional_equipment_text
+    )
+
+
+def validate_preferences(value):
+    if isinstance(value, dict) and "equipment" in value and value["equipment"] is not None:
+        equipment = PhotographyEquipment.model_validate(value["equipment"])
+        return {**value, "equipment": equipment.model_dump(exclude_unset=True)}
+    return value
+
+
 class PhotographyPlanCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, hide_input_in_errors=True)
 
@@ -46,6 +77,7 @@ class PhotographyPlanCreate(BaseModel):
     _parse_datetime = field_validator("shoot_datetime", mode="before")(parse_datetime)
 
     _store_datetime_without_timezone = field_validator("shoot_datetime")(store_datetime_without_timezone)
+    _validate_preferences = field_validator("preferences")(validate_preferences)
 
 
 class PhotographyPlanPatch(BaseModel):
@@ -68,6 +100,7 @@ class PhotographyPlanPatch(BaseModel):
     _clean_text = field_validator("photography_type", "environment", "location")(clean_text)
     _parse_datetime = field_validator("shoot_datetime", mode="before")(parse_datetime)
     _store_datetime_without_timezone = field_validator("shoot_datetime")(store_datetime_without_timezone)
+    _validate_preferences = field_validator("preferences")(validate_preferences)
 
     @field_validator("people_count", mode="before")
     @classmethod

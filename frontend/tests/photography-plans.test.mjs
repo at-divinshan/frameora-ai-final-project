@@ -26,7 +26,7 @@ try {
   await build({
     ...buildOptions,
     stdin: {
-      contents: 'export { createPlan, getMyPlans, getMyPlan, updatePlan, deletePlan, getPlanErrorMessage } from "./src/services/planService.js"; export { default as api } from "./src/services/api.js";',
+      contents: 'export { createPlan, getMyPlans, getMyPlan, updatePlan, deletePlan, getPlanSuggestions, getPlanErrorMessage, getSuggestionErrorMessage } from "./src/services/planService.js"; export { default as api } from "./src/services/api.js";',
       resolveDir: frontendDirectory,
       sourcefile: "plan-service-test-entry.js",
     },
@@ -55,7 +55,7 @@ try {
   const { default: PlanForm } = await import(
     pathToFileURL(path.join(temporaryDirectory, "planForm.js")).href
   );
-  const { createPlan, getMyPlans, getMyPlan, updatePlan, deletePlan, getPlanErrorMessage, api } = await import(
+  const { createPlan, getMyPlans, getMyPlan, updatePlan, deletePlan, getPlanSuggestions, getPlanErrorMessage, getSuggestionErrorMessage, api } = await import(
     pathToFileURL(path.join(temporaryDirectory, "planService.js")).href
   );
 
@@ -75,6 +75,7 @@ try {
     assert.ok(!html.includes("<pre")); assert.ok(!html.includes("<code"));
     assert.ok(!html.includes("photography_style"));
     assert.ok(html.includes("Edit</a>")); assert.ok(html.includes("Delete</button>"));
+    assert.ok(html.includes("AI Suggestions"));
     assert.ok(!html.includes("role=\"alertdialog\""));
   });
   test("cards omit empty and malformed preferences without crashing", () => {
@@ -87,6 +88,13 @@ try {
     assert.ok(!html.includes("secret"));
     assert.ok(renderCard({ outfit_color: "<script>alert(1)</script>" }).includes("&lt;script&gt;"));
     assert.ok(!renderCard({ outfit_color: "<script>alert(1)</script>" }).includes("<script>"));
+    const equipmentHtml = renderCard({ equipment: {
+      device_type: "Smartphone", camera_model: "Pixel", lens: "Wide lens", additional_equipment: "Tripod",
+    } });
+    for (const text of ["Photography Equipment", "Smartphone", "Pixel", "Lens: Wide lens", "Additional equipment: Tripod"]) {
+      assert.ok(equipmentHtml.includes(text));
+    }
+    assert.ok(!equipmentHtml.includes("[object Object]"));
   });
 
   test("validates form fields and converts selected preferences into an API JSON value", () => {
@@ -103,11 +111,10 @@ try {
     };
     assert.deepEqual(validatePhotographyPlanForm(valid), {});
     assert.deepEqual(buildPlanPreferences(valid), {
-      photography_style: "Cinematic",
-      lighting_preference: "Golden Hour",
-      pose_preference: "Candid",
-      camera_angle_preference: "Eye Level",
+      photography_style: "Cinematic", lighting_preference: "Golden Hour",
+      pose_preference: "Candid", camera_angle_preference: "Eye Level",
       outfit_color: "Blue",
+      equipment: { device_type: null, camera_model: null, lens: null, additional_equipment: null },
     });
     assert.deepEqual(buildPlanPreferences({
       photography_style: "",
@@ -115,11 +122,30 @@ try {
       pose_preference: "",
       camera_angle_preference: "",
       outfit_color: " ",
-    }), null);
+      equipment_device_type: "Smartphone",
+      equipment_camera_model: " Pixel ",
+      equipment_lens: "",
+      equipment_additional_equipment: "",
+    }), {
+      photography_style: null, lighting_preference: null, pose_preference: null, camera_angle_preference: null,
+      outfit_color: null,
+      equipment: { device_type: "Smartphone", camera_model: "Pixel", lens: null, additional_equipment: null },
+    });
     assert.ok(validatePhotographyPlanForm({ ...valid, photography_type: "" }).photography_type);
     assert.ok(validatePhotographyPlanForm({ ...valid, people_count: "11" }).people_count);
     assert.ok(validatePhotographyPlanForm({ ...valid, environment: "x".repeat(21) }).environment);
     assert.ok(validatePhotographyPlanForm({ ...valid, location: "x".repeat(256) }).location);
+    assert.deepEqual(validatePhotographyPlanForm({
+      ...valid,
+      equipment_device_type: "",
+      equipment_camera_model: "",
+      equipment_lens: "",
+      equipment_additional_equipment: "",
+    }), {});
+    assert.ok(validatePhotographyPlanForm({ ...valid, equipment_device_type: "Film Camera" }).equipment_device_type);
+    assert.ok(validatePhotographyPlanForm({ ...valid, equipment_camera_model: "x".repeat(101) }).equipment_camera_model);
+    assert.ok(validatePhotographyPlanForm({ ...valid, equipment_lens: "x".repeat(101) }).equipment_lens);
+    assert.ok(validatePhotographyPlanForm({ ...valid, equipment_additional_equipment: "x".repeat(301) }).equipment_additional_equipment);
   });
 
   test("renders all ten number choices and labeled preference controls", async () => {
@@ -128,9 +154,10 @@ try {
     for (let count = 1; count <= 10; count += 1) {
       assert.match(html, new RegExp(`<option[^>]*value="${count}"[^>]*>${count}</option>`));
     }
-    for (const label of ["Photography Style", "Lighting Preference", "Pose Preference", "Camera Angle Preference", "Outfit Color"]) {
+    for (const label of ["Photography Style", "Lighting Preference", "Pose Preference", "Camera Angle Preference", "Outfit Color", "Photography Equipment (Optional)", "Device Type (optional)", "Camera / Device Model (optional)", "Lens (optional)", "Additional Equipment (optional)"]) {
       assert.ok(html.includes(label));
     }
+    assert.ok(html.includes("Professional camera equipment is not required."));
     assert.ok(!html.includes("JSON"));
     assert.ok(!html.includes('placeholder="{'));
     assert.match(dashboardStyles, /\.user-plan-form \.input-wrapper select\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;/);
@@ -153,6 +180,12 @@ try {
         pose_preference: "Candid",
         camera_angle_preference: "Eye Level",
         outfit_color: "Blue",
+        equipment: {
+          device_type: "Mirrorless",
+          camera_model: "Sony a7",
+          lens: "35mm",
+          additional_equipment: "Tripod",
+        },
         unrecognized: "ignored",
       }),
     };
@@ -168,13 +201,17 @@ try {
       pose_preference: "Candid",
       camera_angle_preference: "Eye Level",
       outfit_color: "Blue",
+      equipment_device_type: "Mirrorless",
+      equipment_camera_model: "Sony a7",
+      equipment_lens: "35mm",
+      equipment_additional_equipment: "Tripod",
     });
     const html = renderToStaticMarkup(React.createElement(PlanForm, {
       initialValues: values,
       onSubmit: async () => {},
       submitLabel: "Save Changes",
     }));
-    for (const value of ["Portrait", "Indoor", "Jaffna Studio", "2026-11-15T05:00"]) assert.ok(html.includes(value));
+    for (const value of ["Portrait", "Indoor", "Jaffna Studio", "2026-11-15T05:00", "Sony a7", "35mm", "Tripod"]) assert.ok(html.includes(value));
     for (const label of ["Natural", "Golden Hour", "Candid", "Eye Level", "Blue"]) assert.ok(html.includes(label));
     assert.ok(html.includes("Save Changes"));
   });
@@ -223,17 +260,22 @@ try {
     assert.equal(requests[1].method, "get");
     assert.equal(requests[1].url, "/plans");
     assert.deepEqual(await getMyPlan(21), { id: 21 });
+    assert.deepEqual(await getPlanSuggestions(21), { id: 21 });
     assert.deepEqual(await updatePlan(21, { location: null }), { id: 21 });
     await deletePlan(21);
     assert.equal(requests[2].url, "/plans/21");
-    assert.equal(requests[3].method, "patch");
-    assert.deepEqual(JSON.parse(requests[3].data), { location: null });
-    assert.equal(requests[4].method, "delete");
+    assert.equal(requests[3].method, "post");
+    assert.equal(requests[3].url, "/plans/21/suggestions");
+    assert.equal(requests[4].method, "patch");
+    assert.deepEqual(JSON.parse(requests[4].data), { location: null });
+    assert.equal(requests[5].method, "delete");
     assert.equal(getPlanErrorMessage({ response: { status: 401 } }), "Your session has expired. Please sign in again.");
     assert.match(getPlanErrorMessage({ response: { status: 403 } }), /permission/);
     assert.match(getPlanErrorMessage({ response: { status: 404 } }), /could not be found/);
     assert.match(getPlanErrorMessage({ response: { status: 409 } }), /generation history/);
     assert.match(getPlanErrorMessage({ response: { status: 503 } }), /temporarily unavailable/);
+    assert.match(getSuggestionErrorMessage({ response: { status: 503 } }), /not available yet/);
+    assert.match(getSuggestionErrorMessage({ response: { status: 404 } }), /could not be found/);
     assert.ok(!getPlanErrorMessage({ response: { data: { detail: [{ msg: "private raw JSON" }] } } }).includes("private raw JSON"));
   });
 } finally {

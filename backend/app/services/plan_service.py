@@ -15,16 +15,44 @@ from app.schemas.photography_plan import (
 PLAN_NOT_FOUND = "Photography plan not found."
 
 
+def _merge_preferences(existing, incoming):
+    if incoming is None or not isinstance(incoming, dict):
+        return incoming
+
+    merged = dict(existing) if isinstance(existing, dict) else {}
+    for key, value in incoming.items():
+        if key == "equipment":
+            if value is None:
+                merged.pop(key, None)
+                continue
+            if isinstance(value, dict):
+                equipment = dict(merged.get(key)) if isinstance(merged.get(key), dict) else {}
+                equipment.update(value)
+                equipment = {name: item for name, item in equipment.items() if item is not None}
+                if equipment:
+                    merged[key] = equipment
+                else:
+                    merged.pop(key, None)
+                continue
+        if value is None:
+            merged.pop(key, None)
+        else:
+            merged[key] = value
+    return merged or None
+
+
 def list_plans(db: Session, user: User) -> list[PhotographyPlanRead]:
     return [PhotographyPlanRead.model_validate(plan) for plan in plan_repository.list_for_user(db, user.id)]
 
 
 def create_plan(db: Session, user: User, data: PhotographyPlanCreate) -> PhotographyPlanRead:
     try:
+        values = data.model_dump()
+        values["preferences"] = _merge_preferences(None, values["preferences"])
         plan = plan_repository.create_for_user(
             db,
             user.id,
-            data.model_dump(),
+            values,
         )
         db.refresh(plan)
         result = PhotographyPlanRead.model_validate(plan)
@@ -49,11 +77,17 @@ def update_plan(
     data: PhotographyPlanPatch,
 ) -> PhotographyPlanRead:
     try:
+        existing_plan = plan_repository.find_for_user(db, user.id, plan_id)
+        if existing_plan is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=PLAN_NOT_FOUND)
+        values = data.model_dump(exclude_unset=True)
+        if "preferences" in values:
+            values["preferences"] = _merge_preferences(existing_plan.preferences, values["preferences"])
         plan = plan_repository.update_for_user(
             db,
             user.id,
             plan_id,
-            data.model_dump(exclude_unset=True),
+            values,
         )
         if plan is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=PLAN_NOT_FOUND)

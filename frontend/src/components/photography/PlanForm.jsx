@@ -15,6 +15,10 @@ const initialValues = {
   pose_preference: "",
   camera_angle_preference: "",
   outfit_color: "",
+  equipment_device_type: "",
+  equipment_camera_model: "",
+  equipment_lens: "",
+  equipment_additional_equipment: "",
 };
 
 const preferenceFields = [
@@ -28,11 +32,17 @@ export function buildPlanPreferences(values) {
   const preferences = {};
   for (const [field] of preferenceFields) {
     const value = values[field]?.trim();
-    if (value) preferences[field] = value;
+    preferences[field] = value || null;
   }
   const outfitColor = values.outfit_color?.trim();
-  if (outfitColor) preferences.outfit_color = outfitColor;
-  return Object.keys(preferences).length ? preferences : null;
+  preferences.outfit_color = outfitColor || null;
+  preferences.equipment = {
+    device_type: values.equipment_device_type || null,
+    camera_model: values.equipment_camera_model?.trim() || null,
+    lens: values.equipment_lens?.trim() || null,
+    additional_equipment: values.equipment_additional_equipment?.trim() || null,
+  };
+  return preferences;
 }
 
 export function mapPlanToFormValues(plan) {
@@ -45,6 +55,17 @@ export function mapPlanToFormValues(plan) {
   for (const key of ["photography_style", "lighting_preference", "pose_preference", "camera_angle_preference", "outfit_color"]) {
     formValues[key] = typeof preferences[key] === "string" ? preferences[key] : "";
   }
+  const equipment = preferences.equipment && typeof preferences.equipment === "object" && !Array.isArray(preferences.equipment)
+    ? preferences.equipment
+    : {};
+  formValues.equipment_device_type = ["Smartphone", "DSLR", "Mirrorless", "Other"].includes(equipment.device_type)
+    ? equipment.device_type
+    : "";
+  formValues.equipment_camera_model = typeof equipment.camera_model === "string" ? equipment.camera_model : "";
+  formValues.equipment_lens = typeof equipment.lens === "string" ? equipment.lens : "";
+  formValues.equipment_additional_equipment = typeof equipment.additional_equipment === "string"
+    ? equipment.additional_equipment
+    : "";
   formValues.photography_type = plan.photography_type || "";
   formValues.people_count = String(plan.people_count || 1);
   formValues.environment = plan.environment || "";
@@ -60,12 +81,21 @@ export function validatePhotographyPlanForm(values) {
   const type = values.photography_type.trim();
   const environment = values.environment.trim();
   const location = values.location.trim();
+  const cameraModel = values.equipment_camera_model?.trim() || "";
+  const lens = values.equipment_lens?.trim() || "";
+  const additionalEquipment = values.equipment_additional_equipment?.trim() || "";
   if (!type) errors.photography_type = "Photography type is required.";
   else if (type.length > 50) errors.photography_type = "Use 50 characters or fewer.";
   if (!/^(?:[1-9]|10)$/.test(values.people_count)) errors.people_count = "Choose 1 to 10 people.";
   if (!environment) errors.environment = "Environment is required.";
   else if (environment.length > 20) errors.environment = "Use 20 characters or fewer.";
   if (location.length > 255) errors.location = "Use 255 characters or fewer.";
+  if (values.equipment_device_type && !["Smartphone", "DSLR", "Mirrorless", "Other"].includes(values.equipment_device_type)) {
+    errors.equipment_device_type = "Choose a supported device type.";
+  }
+  if (cameraModel.length > 100) errors.equipment_camera_model = "Use 100 characters or fewer.";
+  if (lens.length > 100) errors.equipment_lens = "Use 100 characters or fewer.";
+  if (additionalEquipment.length > 300) errors.equipment_additional_equipment = "Use 300 characters or fewer.";
   return errors;
 }
 
@@ -162,6 +192,57 @@ export default function PlanForm({
         onChange={change}
         maxLength={50}
       />
+      <fieldset className="user-plan-equipment">
+        <legend>Photography Equipment (Optional)</legend>
+        <p>Tell us what you have available. Professional camera equipment is not required.</p>
+        <div className="form-field">
+          <label htmlFor="equipment_device_type">Device Type (optional)</label>
+          <div className={`input-wrapper${errors.equipment_device_type ? " has-error" : ""}`}>
+            <select
+              className="user-plan-select"
+              id="equipment_device_type"
+              name="equipment_device_type"
+              value={values.equipment_device_type}
+              onChange={change}
+              aria-invalid={Boolean(errors.equipment_device_type)}
+              aria-describedby={errors.equipment_device_type ? "equipment_device_type-error" : undefined}
+            >
+              <option value="">Select a device type</option>
+              {["Smartphone", "DSLR", "Mirrorless", "Other"].map((deviceType) => (
+                <option key={deviceType} value={deviceType}>{deviceType}</option>
+              ))}
+            </select>
+          </div>
+          {errors.equipment_device_type && <span className="field-error" id="equipment_device_type-error" role="alert">{errors.equipment_device_type}</span>}
+        </div>
+        <Input
+          id="equipment_camera_model"
+          name="equipment_camera_model"
+          label="Camera / Device Model (optional)"
+          value={values.equipment_camera_model}
+          onChange={change}
+          maxLength={100}
+          error={errors.equipment_camera_model}
+        />
+        <Input
+          id="equipment_lens"
+          name="equipment_lens"
+          label="Lens (optional)"
+          value={values.equipment_lens}
+          onChange={change}
+          maxLength={100}
+          error={errors.equipment_lens}
+        />
+        <Input
+          id="equipment_additional_equipment"
+          name="equipment_additional_equipment"
+          label="Additional Equipment (optional)"
+          value={values.equipment_additional_equipment}
+          onChange={change}
+          maxLength={300}
+          error={errors.equipment_additional_equipment}
+        />
+      </fieldset>
       <Input
         id="location"
         name="location"

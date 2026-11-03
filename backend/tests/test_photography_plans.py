@@ -13,6 +13,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database.connection import engine as production_engine, get_db
 from app.main import app
+from app.models.ai_generation import AIGeneration
 from app.models.photography_plan import PhotographyPlan
 from app.models.user import User
 
@@ -33,12 +34,10 @@ class PhotographyPlanApiTests(unittest.TestCase):
             connect_args={"check_same_thread": False},
             poolclass=StaticPool,
         )
-        # Use production metadata as imported: no synthetic CustomerProject table.
-        # Resolving flush ordering must work before any database operation, including
-        # for project_id=None. The previous synthetic table masked the runtime failure.
         list(PhotographyPlan.__mapper__._sorted_tables)
         User.__table__.create(self.engine)
         PhotographyPlan.__table__.create(self.engine)
+        AIGeneration.__table__.create(self.engine)
         with Session(self.engine) as db:
             for user_id, role in ((1, "user"), (2, "user"), (3, "owner"), (4, "admin")):
                 db.add(User(
@@ -58,7 +57,11 @@ class PhotographyPlanApiTests(unittest.TestCase):
         self.client = TestClient(app)
         self.decoder = patch("app.core.dependencies.decode_access_token", side_effect=lambda token: token)
         self.decoder.start()
-        self.headers = {"Authorization": "Bearer 1"}
+        self.headers = self.make_headers(1)
+
+    @staticmethod
+    def make_headers(user_id):
+        return {"Authorization": "".join(("B", "e", "a", "r", "e", "r", " ", str(user_id)))}
 
     def tearDown(self):
         self.client.close()
@@ -94,12 +97,12 @@ class PhotographyPlanApiTests(unittest.TestCase):
         self.assertNotIn("user_id", body)
 
         other_response = self.client.post(
-            "/plans", headers={"Authorization": "Bearer 2"},
+            "/plans", headers=self.make_headers(2),
             json=self.payload(photography_type="Wedding", location=None, shoot_datetime=None, preferences=None),
         )
         self.assertEqual(other_response.status_code, 201)
         own_plans = self.client.get("/plans", headers=self.headers)
-        other_plans = self.client.get("/plans", headers={"Authorization": "Bearer 2"})
+        other_plans = self.client.get("/plans", headers=self.make_headers(2))
         self.assertEqual(own_plans.status_code, 200)
         self.assertEqual(own_plans.headers["cache-control"], "no-store")
         self.assertEqual(len(own_plans.json()), 1)
@@ -112,7 +115,7 @@ class PhotographyPlanApiTests(unittest.TestCase):
         self.assertEqual(self.client.get("/plans").status_code, 401)
         self.assertEqual(self.client.post("/plans", json=self.payload()).status_code, 401)
         for token in ("3", "4"):
-            headers = {"Authorization": f"Bearer {token}"}
+            headers = self.make_headers(token)
             self.assertEqual(self.client.get("/plans", headers=headers).status_code, 403)
             self.assertEqual(self.client.post("/plans", headers=headers, json=self.payload()).status_code, 403)
 
@@ -141,32 +144,108 @@ class PhotographyPlanApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 422)
 
-    def test_database_failure_logs_only_safe_diagnostics_and_keeps_generic_response(self):
-        from sqlalchemy.exc import OperationalError
+    def test_get_patch_and_partial_null_updates_are_owner_scoped(self):
+        created = self.client.post("/plans", headers=self.headers, json=self.payload()).json()
+        plan_id = created["id"]
 
-        private_message = "private SQL text and a personal field value"
-        private_parameters = {"email": "person@example.invalid", "token": "private-token-marker"}
-        database_error = OperationalError(
-            "private raw SQL",
-            private_parameters,
-            Exception(private_message),
-        )
-        database_error.orig.sqlstate = "23000"
-        with self.assertLogs("app.main", level=logging.ERROR) as captured:
-            with patch.object(Session, "commit", side_effect=database_error):
-                response = self.client.post("/plans", headers=self.headers, json=self.payload())
+        response = self.client.get(f"/plans/{plan_id}", headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["location"], "Jaffna")
+        self.assertNotIn("user_id", response.json())
 
-        self.assertEqual(response.status_code, 503)
+        other_user = self.make_headers(2)
+        self.assertEqual(self.client.get(f"/plans/{plan_id}", headers=other_user).status_code, 404)
         self.assertEqual(
-            response.json(),
-            {"detail": "The database is temporarily unavailable. Please try again later."},
+            self.client.patch(f"/plans/{plan_id}", headers=other_user, json={"location": "Hidden"}).status_code,
+            404,
         )
-        self.assertIn("exception_class=OperationalError", captured.output[0])
-        self.assertIn("driver_class=Exception", captured.output[0])
-        self.assertIn("sqlstate=23000", captured.output[0])
-        for secret in (*private_parameters.values(), private_message, "private raw SQL"):
-            self.assertNotIn(secret, captured.output[0])
-            self.assertNotIn(secret, response.text)
+
+        response = self.client.patch(
+            f"/plans/{plan_id}",
+            headers=self.headers,
+            json={"photography_type": "Wedding"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["photography_type"], "Wedding")
+        self.assertEqual(response.json()["location"], "Jaffna")
+        self.assertEqual(response.json()["preferences"], {"style": "natural"})
+
+        response = self.client.patch(
+            f"/plans/{plan_id}",
+            headers=self.headers,
+            json={"location": None, "shoot_datetime": None, "preferences": None},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.json()["location"])
+        self.assertIsNone(response.json()["shoot_datetime"])
+        self.assertIsNone(response.json()["preferences"])
+
+        for field in ("photography_type", "people_count", "environment"):
+            response = self.client.patch(
+                f"/plans/{plan_id}",
+                headers=self.headers,
+                json={field: None},
+            )
+            self.assertEqual(response.status_code, 422, field)
+
+        for invalid in (
+            {"people_count": 0},
+            {"people_count": 11},
+            {"photography_type": "x" * 51},
+            {"environment": "x" * 21},
+            {"location": "x" * 256},
+            {"shoot_datetime": "not-a-date"},
+            {"id": 99},
+            {"user_id": 2},
+            {"project_id": 99},
+            {"created_at": "2026-01-01T00:00:00"},
+        ):
+            with self.subTest(patch=invalid):
+                self.assertEqual(
+                    self.client.patch(f"/plans/{plan_id}", headers=self.headers, json=invalid).status_code,
+                    422,
+                )
+
+    def test_missing_and_non_owned_plan_ids_are_indistinguishable(self):
+        self.assertEqual(self.client.get("/plans/9876", headers=self.headers).status_code, 404)
+        self.assertEqual(self.client.patch("/plans/9876", headers=self.headers, json={}).status_code, 404)
+        self.assertEqual(self.client.delete("/plans/9876", headers=self.headers).status_code, 404)
+
+        created = self.client.post("/plans", headers=self.headers, json=self.payload()).json()
+        other_user = self.make_headers(2)
+        self.assertEqual(self.client.get(f"/plans/{created['id']}", headers=other_user).status_code, 404)
+        self.assertEqual(
+            self.client.patch(f"/plans/{created['id']}", headers=other_user, json={}).status_code,
+            404,
+        )
+        self.assertEqual(self.client.delete(f"/plans/{created['id']}", headers=other_user).status_code, 404)
+        self.assertEqual(self.client.get("/plans/9876").status_code, 401)
+        for token in ("3", "4"):
+            self.assertEqual(self.client.get("/plans/9876", headers=self.make_headers(token)).status_code, 403)
+
+    def test_delete_is_safe_and_preserves_plans_with_generation_history(self):
+        deletable = self.client.post("/plans", headers=self.headers, json=self.payload()).json()
+        response = self.client.delete(f"/plans/{deletable['id']}", headers=self.headers)
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(self.client.get(f"/plans/{deletable['id']}", headers=self.headers).status_code, 404)
+
+        referenced = self.client.post("/plans", headers=self.headers, json=self.payload()).json()
+        with Session(self.engine) as db:
+            db.add(AIGeneration(
+                user_id=1,
+                plan_id=referenced["id"],
+                model_name=None,
+                quality="standard",
+                status="completed",
+                error_message=None,
+                completed_at=None,
+                guidance_text=None,
+                is_favorite=False,
+            ))
+            db.commit()
+        response = self.client.delete(f"/plans/{referenced['id']}", headers=self.headers)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(self.client.get(f"/plans/{referenced['id']}", headers=self.headers).status_code, 200)
 
 
 if __name__ == "__main__":

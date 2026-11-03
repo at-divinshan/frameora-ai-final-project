@@ -116,6 +116,16 @@
 .user-plan-preference-list > div { min-width: 0; }
 .user-plan-preference-list dt { color: var(--dashboard-muted); font-size: 12px; }
 .user-plan-preference-list dd { margin: 4px 0 0; color: var(--dashboard-text); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.user-plan-card-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.user-plan-card-actions .user-dashboard-create-button { width: auto; min-height: 38px; padding: 8px 13px; }
+.user-plan-action-secondary, .user-plan-action-danger { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 13px; border: 1px solid var(--dashboard-line); border-radius: 8px; background: var(--dashboard-search); color: var(--dashboard-text); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.user-plan-action-danger { border-color: #e8798970; color: #e87989; }
+.user-plan-dialog-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: #020711b8; }
+.user-plan-delete-dialog { width: min(100%, 440px); padding: 24px; border: 1px solid var(--dashboard-line); border-radius: 16px; background: var(--dashboard-sidebar); color: var(--dashboard-text); box-shadow: 0 20px 70px #0008; }
+.user-plan-delete-dialog h2 { margin: 0 0 10px; font-size: 20px; }
+.user-plan-delete-dialog > p { line-height: 1.6; }
+.user-plan-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.user-plan-dialog-actions button:disabled { opacity: .6; cursor: wait; }
 .user-plan-form-card .account-secondary { color: var(--dashboard-text); }
 .user-plan-page :focus-visible { outline: 2px solid #78cfff; outline-offset: 3px; }
 .user-dashboard-menu-toggle { display: none; }
@@ -157,6 +167,9 @@
   .user-dashboard-hero h1 { font-size: clamp(24px, 4vw, 30px); }
 }
 @media (max-width: 540px) {
+  .user-plan-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .user-plan-card-actions > * { width: 100%; }
+  .user-plan-delete-dialog { padding: 20px; }
   .user-dashboard-navbar { gap: 12px; }
   .user-dashboard-account-controls { width: 100%; justify-content: flex-end; }
   .user-dashboard-account { margin-right: auto; order: -1; }

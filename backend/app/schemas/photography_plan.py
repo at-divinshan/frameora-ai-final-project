@@ -7,6 +7,30 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+def clean_text(value):
+    if value is None:
+        return None
+    value = value.strip()
+    if not value or any(unicodedata.category(char).startswith("C") for char in value):
+        raise ValueError("Enter valid text.")
+    return value
+
+
+def parse_datetime(value):
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            raise ValueError("Enter a valid date and time.") from None
+    return value
+
+
+def store_datetime_without_timezone(value):
+    if value is not None and value.tzinfo is not None:
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
+
+
 class PhotographyPlanCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, hide_input_in_errors=True)
 
@@ -17,31 +41,39 @@ class PhotographyPlanCreate(BaseModel):
     shoot_datetime: datetime | None = None
     preferences: Any | None = None
 
-    @field_validator("photography_type", "environment", "location")
+    _clean_text = field_validator("photography_type", "environment", "location")(clean_text)
+
+    _parse_datetime = field_validator("shoot_datetime", mode="before")(parse_datetime)
+
+    _store_datetime_without_timezone = field_validator("shoot_datetime")(store_datetime_without_timezone)
+
+
+class PhotographyPlanPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, hide_input_in_errors=True)
+
+    photography_type: str | None = Field(default=None, min_length=1, max_length=50)
+    people_count: int | None = Field(default=None, ge=1, le=10)
+    environment: str | None = Field(default=None, min_length=1, max_length=20)
+    location: str | None = Field(default=None, max_length=255)
+    shoot_datetime: datetime | None = None
+    preferences: Any | None = None
+
+    @field_validator("photography_type", "environment", mode="before")
     @classmethod
-    def clean_text(cls, value):
+    def require_non_null_text(cls, value):
         if value is None:
-            return None
-        value = value.strip()
-        if not value or any(unicodedata.category(char).startswith("C") for char in value):
-            raise ValueError("Enter valid text.")
+            raise ValueError("This field cannot be null.")
         return value
 
-    @field_validator("shoot_datetime", mode="before")
-    @classmethod
-    def parse_datetime(cls, value):
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value.replace("Z", "+00:00"))
-            except ValueError:
-                raise ValueError("Enter a valid date and time.") from None
-        return value
+    _clean_text = field_validator("photography_type", "environment", "location")(clean_text)
+    _parse_datetime = field_validator("shoot_datetime", mode="before")(parse_datetime)
+    _store_datetime_without_timezone = field_validator("shoot_datetime")(store_datetime_without_timezone)
 
-    @field_validator("shoot_datetime")
+    @field_validator("people_count", mode="before")
     @classmethod
-    def store_datetime_without_timezone(cls, value):
-        if value is not None and value.tzinfo is not None:
-            return value.astimezone(timezone.utc).replace(tzinfo=None)
+    def require_non_null_people_count(cls, value):
+        if value is None:
+            raise ValueError("People count cannot be null.")
         return value
 
 

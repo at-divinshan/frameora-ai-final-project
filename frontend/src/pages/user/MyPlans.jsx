@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Images, Plus } from "lucide-react";
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import PlanCard from "../../components/photography/PlanCard";
-import { getMyPlans } from "../../services/planService";
+import { getMyPlans, getPlanErrorMessage } from "../../services/planService";
 
 export default function MyPlans() {
+  const location = useLocation();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState(() => {
+    if (location.state?.planUpdated) return "Your photography plan was updated.";
+    if (location.state?.planCreated) return "Your photography plan was created.";
+    return "";
+  });
 
   const loadPlans = useCallback(async (signal) => {
     setLoading(true);
@@ -17,12 +23,17 @@ export default function MyPlans() {
       setPlans(await getMyPlans(signal));
     } catch (requestError) {
       if (!signal?.aborted) {
-        setError(requestError.response?.data?.detail || "Unable to load your plans. Please try again.");
+        setError(getPlanErrorMessage(requestError, "load"));
       }
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
   }, []);
+
+  function removePlan(planId) {
+    setPlans((current) => current.filter((plan) => plan.id !== planId));
+    setNotice("Your photography plan was deleted.");
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -42,6 +53,7 @@ export default function MyPlans() {
             <Plus size={17} aria-hidden="true" /> Create Plan
           </Link>
         </div>
+        {notice && <p className="user-plan-message" role="status">{notice}</p>}
         {loading ? (
           <div className="user-dashboard-empty-state" role="status">Loading your plans…</div>
         ) : error ? (
@@ -57,7 +69,7 @@ export default function MyPlans() {
           </div>
         ) : (
           <div className="user-plan-grid">
-            {plans.map((plan) => <PlanCard key={plan.id} plan={plan} />)}
+            {plans.map((plan) => <PlanCard key={plan.id} plan={plan} onDeleted={removePlan} />)}
           </div>
         )}
       </section>

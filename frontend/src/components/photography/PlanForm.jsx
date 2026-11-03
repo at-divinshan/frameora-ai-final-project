@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import Button from "../common/Button";
 import Input from "../common/Input";
+import { getPlanErrorMessage } from "../../services/planService";
 
 const initialValues = {
   photography_type: "",
@@ -34,6 +35,26 @@ export function buildPlanPreferences(values) {
   return Object.keys(preferences).length ? preferences : null;
 }
 
+export function mapPlanToFormValues(plan) {
+  let preferences = plan.preferences;
+  if (typeof preferences === "string") {
+    try { preferences = JSON.parse(preferences); } catch { preferences = null; }
+  }
+  if (!preferences || typeof preferences !== "object" || Array.isArray(preferences)) preferences = {};
+  const formValues = { ...initialValues };
+  for (const key of ["photography_style", "lighting_preference", "pose_preference", "camera_angle_preference", "outfit_color"]) {
+    formValues[key] = typeof preferences[key] === "string" ? preferences[key] : "";
+  }
+  formValues.photography_type = plan.photography_type || "";
+  formValues.people_count = String(plan.people_count || 1);
+  formValues.environment = plan.environment || "";
+  formValues.location = plan.location || "";
+  formValues.shoot_datetime = typeof plan.shoot_datetime === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(plan.shoot_datetime)
+    ? plan.shoot_datetime.slice(0, 16)
+    : "";
+  return formValues;
+}
+
 export function validatePhotographyPlanForm(values) {
   const errors = {};
   const type = values.photography_type.trim();
@@ -48,15 +69,14 @@ export function validatePhotographyPlanForm(values) {
   return errors;
 }
 
-function errorText(error) {
-  const detail = error.response?.data?.detail;
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((item) => item.msg).filter(Boolean).join(" ");
-  return "Unable to create your plan. Please try again.";
-}
-
-export default function PlanForm({ onSubmit, submitting = false, submitError = "" }) {
-  const [values, setValues] = useState(initialValues);
+export default function PlanForm({
+  onSubmit,
+  submitting = false,
+  submitError = "",
+  initialValues: providedValues,
+  submitLabel = "Create Plan",
+}) {
+  const [values, setValues] = useState(() => ({ ...initialValues, ...providedValues }));
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
 
@@ -84,7 +104,7 @@ export default function PlanForm({ onSubmit, submitting = false, submitError = "
         preferences: buildPlanPreferences(values),
       });
     } catch (error) {
-      setFormError(errorText(error));
+      setFormError(getPlanErrorMessage(error));
     }
   }
 
@@ -160,7 +180,7 @@ export default function PlanForm({ onSubmit, submitting = false, submitError = "
         onChange={change}
       />
       <Button type="submit" className="user-dashboard-create-button" loading={submitting} disabled={submitting}>
-        Create Plan <ArrowRight size={17} aria-hidden="true" />
+        {submitLabel} <ArrowRight size={17} aria-hidden="true" />
       </Button>
     </form>
   );

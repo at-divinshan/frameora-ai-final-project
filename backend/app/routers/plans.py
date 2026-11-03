@@ -6,7 +6,11 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import require_roles
 from app.database.connection import get_db
 from app.models.user import User
-from app.schemas.photography_plan import PhotographyPlanCreate, PhotographyPlanRead
+from app.schemas.photography_plan import (
+    PhotographyPlanCreate,
+    PhotographyPlanPatch,
+    PhotographyPlanRead,
+)
 from app.services import plan_service
 
 
@@ -38,3 +42,32 @@ def list_plans(
     db: Session = Depends(get_db),
 ):
     return plan_service.list_plans(db, user)
+
+
+@router.get("/{plan_id}", response_model=PhotographyPlanRead)
+def get_plan(
+    plan_id: int,
+    user: User = Depends(normal_user),
+    db: Session = Depends(get_db),
+):
+    return plan_service.get_plan(db, user, plan_id)
+
+
+@router.patch("/{plan_id}", response_model=PhotographyPlanRead)
+def update_plan(
+    plan_id: int,
+    data: PhotographyPlanPatch,
+    user: User = Depends(normal_user),
+    db: Session = Depends(get_db),
+):
+    return plan_service.update_plan(db, user, plan_id, data)
+
+
+@router.delete("/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_plan(
+    plan_id: int,
+    user: User = Depends(normal_user),
+    db: Session = Depends(get_db),
+):
+    plan_service.delete_plan(db, user, plan_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

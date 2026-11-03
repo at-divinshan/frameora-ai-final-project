@@ -26,7 +26,7 @@ try {
   await build({
     ...buildOptions,
     stdin: {
-      contents: 'export { createPlan, getMyPlans } from "./src/services/planService.js"; export { default as api } from "./src/services/api.js";',
+      contents: 'export { createPlan, getMyPlans, getMyPlan, updatePlan, deletePlan, getPlanErrorMessage } from "./src/services/planService.js"; export { default as api } from "./src/services/api.js";',
       resolveDir: frontendDirectory,
       sourcefile: "plan-service-test-entry.js",
     },
@@ -38,22 +38,32 @@ try {
     outfile: path.join(temporaryDirectory, "planCard.js"),
     jsx: "automatic",
   });
+  await build({
+    ...buildOptions,
+    entryPoints: ["src/components/photography/PlanDeleteDialog.jsx"],
+    outfile: path.join(temporaryDirectory, "planDeleteDialog.js"),
+    jsx: "automatic",
+  });
   const { default: PlanCard } = await import(pathToFileURL(path.join(temporaryDirectory, "planCard.js")).href);
-  const { validatePhotographyPlanForm, buildPlanPreferences } = await import(
+  const { default: PlanDeleteDialog } = await import(pathToFileURL(path.join(temporaryDirectory, "planDeleteDialog.js")).href);
+  const { validatePhotographyPlanForm, buildPlanPreferences, mapPlanToFormValues } = await import(
     pathToFileURL(path.join(temporaryDirectory, "planForm.js")).href
   );
   const { default: React } = await import("react");
   const { renderToStaticMarkup } = await import("react-dom/server");
+  const { MemoryRouter } = await import("react-router-dom");
   const { default: PlanForm } = await import(
     pathToFileURL(path.join(temporaryDirectory, "planForm.js")).href
   );
-  const { createPlan, getMyPlans, api } = await import(
+  const { createPlan, getMyPlans, getMyPlan, updatePlan, deletePlan, getPlanErrorMessage, api } = await import(
     pathToFileURL(path.join(temporaryDirectory, "planService.js")).href
   );
 
-  const renderCard = preferences => renderToStaticMarkup(React.createElement(PlanCard, {
-    plan: { photography_type: "Portrait", environment: "Outdoor", people_count: 2, preferences },
-  }));
+  const renderCard = preferences => renderToStaticMarkup(React.createElement(MemoryRouter, null,
+    React.createElement(PlanCard, {
+      plan: { id: 21, photography_type: "Portrait", environment: "Outdoor", people_count: 2, preferences },
+      onDeleted: () => {},
+    })));
   test("cards render object and JSON-string preferences as expandable labeled values", () => {
     const preferences = { photography_style: "Cinematic", lighting_preference: "Golden Hour",
       pose_preference: "Candid", camera_angle_preference: "Eye Level", outfit_color: "Blue" };
@@ -64,7 +74,8 @@ try {
     for (const value of Object.values(preferences)) assert.ok(html.includes(`<dd>${value}</dd>`));
     assert.ok(!html.includes("<pre")); assert.ok(!html.includes("<code"));
     assert.ok(!html.includes("photography_style"));
-    assert.ok(!html.includes(">Edit<")); assert.ok(!html.includes(">Delete<"));
+    assert.ok(html.includes("Edit</a>")); assert.ok(html.includes("Delete</button>"));
+    assert.ok(!html.includes("role=\"alertdialog\""));
   });
   test("cards omit empty and malformed preferences without crashing", () => {
     for (const value of [null, undefined, "", "{broken", "null", "[]", "42", [], {},
@@ -129,11 +140,72 @@ try {
     assert.match(dashboardStyles, /\[data-theme="light"\].*select option\s*\{[^}]*color:\s*#101633;[^}]*background-color:\s*#f0f6ff/);
   });
 
+  test("maps existing plans and preferences to all reusable form values", async () => {
+    const plan = {
+      photography_type: "Portrait",
+      people_count: 3,
+      environment: "Indoor",
+      location: "Jaffna Studio",
+      shoot_datetime: "2026-11-15T05:00:00",
+      preferences: JSON.stringify({
+        photography_style: "Natural",
+        lighting_preference: "Golden Hour",
+        pose_preference: "Candid",
+        camera_angle_preference: "Eye Level",
+        outfit_color: "Blue",
+        unrecognized: "ignored",
+      }),
+    };
+    const values = mapPlanToFormValues(plan);
+    assert.deepEqual(values, {
+      photography_type: "Portrait",
+      people_count: "3",
+      environment: "Indoor",
+      location: "Jaffna Studio",
+      shoot_datetime: "2026-11-15T05:00",
+      photography_style: "Natural",
+      lighting_preference: "Golden Hour",
+      pose_preference: "Candid",
+      camera_angle_preference: "Eye Level",
+      outfit_color: "Blue",
+    });
+    const html = renderToStaticMarkup(React.createElement(PlanForm, {
+      initialValues: values,
+      onSubmit: async () => {},
+      submitLabel: "Save Changes",
+    }));
+    for (const value of ["Portrait", "Indoor", "Jaffna Studio", "2026-11-15T05:00"]) assert.ok(html.includes(value));
+    for (const label of ["Natural", "Golden Hour", "Candid", "Eye Level", "Blue"]) assert.ok(html.includes(label));
+    assert.ok(html.includes("Save Changes"));
+  });
+
+  test("delete confirmation is initially absent and dialog is accessible when requested", () => {
+    const dialog = renderToStaticMarkup(React.createElement(PlanDeleteDialog, {
+      planName: "Portrait",
+      deleting: false,
+      onCancel: () => {},
+      onConfirm: () => {},
+    }));
+    assert.match(dialog, /role="alertdialog"/);
+    assert.match(dialog, /aria-modal="true"/);
+    assert.match(dialog, /aria-labelledby="delete-plan-title"/);
+    assert.ok(dialog.includes("Cancel"));
+    assert.ok(dialog.includes(">Delete</button>"));
+    const card = renderCard({});
+    assert.ok(!card.includes("alertdialog"));
+    assert.ok(card.includes('aria-label="Delete Portrait plan"'));
+  });
+
   test("plan service sends create and list requests to the authenticated plans API", async () => {
     const requests = [];
     api.defaults.adapter = async (config) => {
       requests.push(config);
-      return { data: config.method === "post" ? { id: 21 } : [], status: 200, headers: {}, config };
+      return {
+        data: config.method === "post" || config.method === "patch" || config.url === "/plans/21" ? { id: 21 } : [],
+        status: config.method === "delete" ? 204 : 200,
+        headers: {},
+        config,
+      };
     };
     const values = {
       photography_type: "Portrait",
@@ -150,6 +222,19 @@ try {
     assert.deepEqual(JSON.parse(requests[0].data), values);
     assert.equal(requests[1].method, "get");
     assert.equal(requests[1].url, "/plans");
+    assert.deepEqual(await getMyPlan(21), { id: 21 });
+    assert.deepEqual(await updatePlan(21, { location: null }), { id: 21 });
+    await deletePlan(21);
+    assert.equal(requests[2].url, "/plans/21");
+    assert.equal(requests[3].method, "patch");
+    assert.deepEqual(JSON.parse(requests[3].data), { location: null });
+    assert.equal(requests[4].method, "delete");
+    assert.equal(getPlanErrorMessage({ response: { status: 401 } }), "Your session has expired. Please sign in again.");
+    assert.match(getPlanErrorMessage({ response: { status: 403 } }), /permission/);
+    assert.match(getPlanErrorMessage({ response: { status: 404 } }), /could not be found/);
+    assert.match(getPlanErrorMessage({ response: { status: 409 } }), /generation history/);
+    assert.match(getPlanErrorMessage({ response: { status: 503 } }), /temporarily unavailable/);
+    assert.ok(!getPlanErrorMessage({ response: { data: { detail: [{ msg: "private raw JSON" }] } } }).includes("private raw JSON"));
   });
 } finally {
   await rm(temporaryDirectory, { recursive: true, force: true });

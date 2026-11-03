@@ -1,4 +1,8 @@
-import { CalendarDays, MapPin, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { CalendarDays, MapPin, Pencil, Trash2, Users } from "lucide-react";
+import PlanDeleteDialog from "./PlanDeleteDialog";
+import { deletePlan, getPlanErrorMessage } from "../../services/planService";
 
 function formatDate(value) {
   if (!value) return "Not scheduled";
@@ -30,8 +34,36 @@ function preferenceEntries(value) {
   });
 }
 
-export default function PlanCard({ plan }) {
+export default function PlanCard({ plan, onDeleted }) {
   const preferences = preferenceEntries(plan.preferences);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const deleteTrigger = useRef(null);
+  const hadDialog = useRef(false);
+
+  useEffect(() => {
+    if (confirmingDelete) hadDialog.current = true;
+    else if (hadDialog.current) {
+      deleteTrigger.current?.focus();
+      hadDialog.current = false;
+    }
+  }, [confirmingDelete]);
+
+  async function confirmDelete() {
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deletePlan(plan.id);
+      setConfirmingDelete(false);
+      onDeleted(plan.id);
+    } catch (error) {
+      setDeleteError(getPlanErrorMessage(error, "delete"));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <article className="user-plan-card">
       <div className="user-plan-card-heading">
@@ -54,6 +86,36 @@ export default function PlanCard({ plan }) {
             ))}
           </dl>
         </details>
+      )}
+      <div className="user-plan-card-actions">
+        <Link
+          className="user-dashboard-create-button"
+          to={`/user/plans/${plan.id}/edit`}
+          aria-label={`Edit ${plan.photography_type} plan`}
+        >
+          <Pencil size={15} aria-hidden="true" /> Edit
+        </Link>
+        <button
+          ref={deleteTrigger}
+          className="user-plan-action-secondary"
+          type="button"
+          onClick={() => {
+            setDeleteError("");
+            setConfirmingDelete(true);
+          }}
+          aria-label={`Delete ${plan.photography_type} plan`}
+        >
+          <Trash2 size={15} aria-hidden="true" /> Delete
+        </button>
+      </div>
+      {confirmingDelete && (
+        <PlanDeleteDialog
+          planName={plan.photography_type}
+          deleting={deleting}
+          error={deleteError}
+          onCancel={() => setConfirmingDelete(false)}
+          onConfirm={confirmDelete}
+        />
       )}
     </article>
   );

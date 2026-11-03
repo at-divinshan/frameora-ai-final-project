@@ -13,6 +13,7 @@ import GoogleCallback from "../pages/auth/GoogleCallback";
 import GoogleLink from "../pages/auth/GoogleLink";
 import UserDashboard from "../pages/user/Dashboard";
 import CreatePlan from "../pages/user/CreatePlan";
+import EditPlan from "../pages/user/EditPlan";
 import MyPlans from "../pages/user/MyPlans";
 import OwnerDashboard from "../pages/owner/Dashboard";
 import StudioSetup from "../pages/owner/StudioSetup";
@@ -80,6 +81,7 @@ export default function AppRoutes() {
                 {role === "user" && (
                   <>
                     <Route path="/user/plans/create" element={<CreatePlan />} />
+                    <Route path="/user/plans/:planId/edit" element={<EditPlan />} />
                     <Route path="/user/plans" element={<MyPlans />} />
                   </>
                 )}

@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.ai_generation import AIGeneration
+from app.middleware.ai_upload_limit import AIUploadLimit
 from app.core.config import settings
 from app.database.connection import check_database_connection, engine
 from app.routers.auth import router as auth_router
@@ -20,6 +21,7 @@ from app.routers.users import router as users_router
 from app.routers.owner import router as owner_router
 from app.routers.subscriptions import router as subscriptions_router
 from app.routers.plans import router as plans_router
+from app.routers.ai import router as ai_router
 from app.services.oauth_transaction_store import close_store
 from app.services.rate_limit_service import close_rate_limits
 
@@ -50,6 +52,9 @@ app = FastAPI(title="Frameora AI", lifespan=lifespan)
 @app.middleware("http")
 async def picture_response_protection(request, call_next):
     response = await call_next(request)
+    if request.url.path.startswith("/ai/"):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
     if request.url.path.startswith("/users/") and request.url.path.rstrip("/").endswith("/picture"):
         response.headers["Cache-Control"] = "no-store"
         response.headers["Pragma"] = "no-cache"
@@ -74,6 +79,7 @@ async def google_response_protection(request, call_next):
     return response
 
 
+app.add_middleware(AIUploadLimit)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(dict.fromkeys((*settings.cors_origins, *(
@@ -90,6 +96,7 @@ app.include_router(users_router)
 app.include_router(owner_router)
 app.include_router(subscriptions_router)
 app.include_router(plans_router)
+app.include_router(ai_router)
 
 
 @app.exception_handler(RequestValidationError)

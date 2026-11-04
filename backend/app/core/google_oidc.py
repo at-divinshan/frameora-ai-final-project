@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from fastapi import HTTPException
 
 from app.core.config import settings
+from app.core.oauth_diagnostics import failure, diagnosed
 
 AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -23,6 +24,7 @@ def rejected():
     return HTTPException(400, "Google authentication could not be completed. Please start again.")
 
 
+@diagnosed("configuration")
 def require_configuration():
     if not settings.google_auth_enabled:
         raise unavailable()
@@ -67,6 +69,7 @@ def new_secret() -> str:
     return secrets.token_urlsafe(32)
 
 
+@diagnosed("authorization_url")
 def authorization_url(state: str, nonce: str, verifier: str) -> str:
     try:
         from authlib.integrations.httpx_client import OAuth2Client
@@ -85,6 +88,7 @@ def authorization_url(state: str, nonce: str, verifier: str) -> str:
 
 
 def exchange_identity(code: str, verifier: str, nonce: str) -> dict:
+    phase = "token_exchange"
     try:
         import httpx
         import jwt
@@ -98,25 +102,30 @@ def exchange_identity(code: str, verifier: str, nonce: str) -> dict:
             timeout=10, trust_env=False, follow_redirects=False,
         ) as client:
             tokens = client.fetch_token(TOKEN_URL, code=code, code_verifier=verifier)
+        phase = "id_token_header"
         encoded = tokens.get("id_token")
         if not isinstance(encoded, str) or len(encoded) > 16384:
             raise ValueError()
         header = jwt.get_unverified_header(encoded)
         if header.get("alg") != "RS256" or not isinstance(header.get("kid"), str):
             raise ValueError()
+        phase = "jwks_fetch"
         # Fixed trusted key endpoint: never follow jku/x5u from a token header.
         with httpx.Client(timeout=10, trust_env=False, follow_redirects=False) as client:
             response = client.get(JWKS_URL)
             response.raise_for_status()
             keys = response.json()["keys"]
+        phase = "id_token_validation"
         key = next(k for k in keys if k.get("kid") == header["kid"] and k.get("kty") == "RSA" and k.get("use", "sig") == "sig" and k.get("alg", "RS256") == "RS256")
         claims = jwt.decode(
             encoded, jwt.PyJWK.from_dict(key, algorithm="RS256").key,
             algorithms=["RS256"], audience=settings.google_client_id, issuer=ISSUERS,
             options={"require": ["iss", "aud", "exp", "iat", "sub", "nonce", "email", "email_verified"]},
         )
+        phase = "nonce_validation"
         if not isinstance(claims["nonce"], str) or not secrets.compare_digest(claims["nonce"], nonce):
             raise ValueError()
+        phase = "identity_claims"
         audiences = claims["aud"] if isinstance(claims["aud"], list) else [claims["aud"]]
         if (len(audiences) > 1 and "azp" not in claims) or ("azp" in claims and claims["azp"] != settings.google_client_id):
             raise ValueError()
@@ -128,6 +137,7 @@ def exchange_identity(code: str, verifier: str, nonce: str) -> dict:
         email = str(TypeAdapter(EmailStr).validate_python(claims["email"])).lower()
         if len(email) > 254:
             raise ValueError()
+        phase = "access_token_hash"
         if "at_hash" in claims:
             access = tokens.get("access_token")
             if not isinstance(access, str):
@@ -138,4 +148,5 @@ def exchange_identity(code: str, verifier: str, nonce: str) -> dict:
         # Google access/refresh/ID tokens are not persisted or returned.
         return {"sub": subject, "email": email}
     except Exception:
+        failure(phase)
         raise rejected() from None

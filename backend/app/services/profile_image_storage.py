@@ -72,8 +72,8 @@ def valid_key(key: str | None) -> bool:
     return isinstance(key, str) and KEY.fullmatch(key) is not None
 
 
-def write_image(data: bytes) -> str:
-    root = storage_root()
+def write_image(data: bytes, *, root: Path | None = None) -> str:
+    root = storage_root() if root is None else root
     key = secrets.token_hex(32) + ".png"
     path = root / key
     # Never overwrite another image or follow a link.
@@ -94,19 +94,19 @@ def write_image(data: bytes) -> str:
     return key
 
 
-def delete_image(key: str | None):
+def delete_image(key: str | None, *, root: Path | None = None):
     if valid_key(key):
-        (storage_root() / key).unlink(missing_ok=True)
+        ((storage_root() if root is None else root) / key).unlink(missing_ok=True)
 
 
-def read_image(key: str | None) -> bytes:
+def read_image(key: str | None, *, root: Path | None = None, max_stored: int = MAX_STORED) -> bytes:
     if not valid_key(key):
         raise FileNotFoundError()
-    fd = os.open(storage_root() / key, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    fd = os.open((storage_root() if root is None else root) / key, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     with os.fdopen(fd, "rb") as file:
         if not stat.S_ISREG(os.fstat(file.fileno()).st_mode):
             raise FileNotFoundError()
-        data = file.read(MAX_STORED + 1)
-        if len(data) > MAX_STORED or not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        data = file.read(max_stored + 1)
+        if len(data) > max_stored or not data.startswith(b"\x89PNG\r\n\x1a\n"):
             raise FileNotFoundError()
         return data

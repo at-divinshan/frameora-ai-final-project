@@ -5,6 +5,7 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.oauth_diagnostics import failure as diagnostic_failure
 from app.core.dependencies import get_current_user
 from app.core.google_oidc import new_secret, rejected, require_configuration
 from app.database.connection import get_db
@@ -23,8 +24,10 @@ def google_ready(request: Request):
     if request.method == "POST":
         # Cookies alone never authorize a cross-origin POST, including registration/completion.
         if request.headers.get("origin") != settings.frontend_origin:
+            diagnostic_failure("origin")
             raise HTTPException(403, "Origin is not permitted.")
         if request.headers.get("content-type", "").split(";", 1)[0].lower() != "application/json":
+            diagnostic_failure("content_type")
             raise HTTPException(415, "A JSON request is required.")
 
 
@@ -49,6 +52,7 @@ def clear_cookie(response: Response, part: str):
 def browser_binding(request: Request) -> str:
     browser = request.cookies.get(cookie_name("binding"), "")
     if not browser or len(browser) > 128:
+        diagnostic_failure("browser_binding")
         raise rejected()
     return browser
 
@@ -84,10 +88,12 @@ def callback(request: Request, db: Session = Depends(get_db)):
     params = request.query_params
     try:
         if any(len(params.getlist(k)) > 1 for k in ("state", "code", "error")):
+            diagnostic_failure("callback_parameters")
             raise rejected()
         state = params.get("state", "")
         result, part = service.callback(db, state, params.get("code"), params.get("error"), browser_binding(request))
     except Exception as failure:
+        diagnostic_failure("callback_failed")
         # Only fixed UI markers cross this boundary, never provider data or exception text.
         marker = "google-error"
         if isinstance(failure, HTTPException) and failure.status_code == 409:

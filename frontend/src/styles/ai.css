@@ -1,0 +1,13 @@
+.ai-page { max-width: 1200px; }
+.ai-page > p { color: var(--text-muted); line-height: 1.6; }
+.ai-form { max-width: 760px; margin-top: 24px; }
+.ai-form fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 20px; min-width: 0; }
+.ai-form textarea { width: 100%; resize: vertical; padding: 12px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-panel); color: var(--text-main); font: inherit; box-sizing: border-box; }
+.ai-note { color: var(--text-muted); font-size: .9rem; line-height: 1.6; }
+.ai-image-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.ai-image-card { margin: 0; overflow: hidden; border: 1px solid var(--border-color); border-radius: 16px; background: var(--bg-panel); }
+.ai-image-card img { display: block; width: 100%; height: auto; }
+.ai-image-card figcaption { display: flex; justify-content: space-between; gap: 12px; padding: 16px; }
+.ai-generation { margin-top: 32px; }
+.ai-generation > p { color: var(--text-muted); }
+@media (max-width: 640px) { .ai-image-grid { grid-template-columns: 1fr; } }

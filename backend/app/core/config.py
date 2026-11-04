@@ -32,6 +32,14 @@ class Settings:
     password_management_enabled: bool = False
     profile_image_dir: str = str(Path(__file__).resolve().parents[2] / "private" / "profile-pictures")
 
+    pollinations_enabled: bool = False
+    pollinations_api_key: str = field(default="", repr=False)
+    pollinations_image_model: str = "openai/gpt-image-1-mini"
+    pollinations_timeout_seconds: int = 180
+    pollinations_chat_model: str = "openai/gpt-5.4-nano"
+    pollinations_chat_timeout_seconds: int = 45
+    ai_image_dir: str = str(Path(__file__).resolve().parents[2] / "private" / "ai-images")
+
     @property
     def database_url(self) -> URL:
         # URL.create handles special characters in credentials without interpolation.
@@ -102,6 +110,17 @@ def load_settings() -> Settings:
         oauth_cookie_secure=optional("OAUTH_COOKIE_SECURE", "true").lower() != "false",
         auth_version_enabled=optional("AUTH_VERSION_ENABLED", "false").lower() == "true",
         password_management_enabled=optional("PASSWORD_MANAGEMENT_ENABLED", "false").lower() == "true",
+        pollinations_enabled=optional("POLLINATIONS_ENABLED", "false").lower() == "true",
+        pollinations_api_key=optional("POLLINATIONS_API_KEY", ""),
+        pollinations_image_model=optional("POLLINATIONS_IMAGE_MODEL", Settings.pollinations_image_model),
+        pollinations_timeout_seconds=positive_integer("POLLINATIONS_TIMEOUT_SECONDS", "180", 300),
+        pollinations_chat_model=optional(
+            "POLLINATIONS_CHAT_MODEL", Settings.pollinations_chat_model
+        ),
+        pollinations_chat_timeout_seconds=positive_integer(
+            "POLLINATIONS_CHAT_TIMEOUT_SECONDS", "45", 180
+        ),
+        ai_image_dir=optional("AI_IMAGE_DIR", Settings.ai_image_dir),
         profile_image_dir=optional("PROFILE_IMAGE_DIR", Settings.profile_image_dir),
     )
 

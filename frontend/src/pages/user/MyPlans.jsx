@@ -53,6 +53,7 @@ export default function MyPlans() {
             <Plus size={17} aria-hidden="true" /> Create Plan
           </Link>
         </div>
+        <div className="user-dashboard-section-heading"><Link className="user-dashboard-view-all" to="/user/ai">Generate Images</Link><Link className="user-dashboard-view-all" to="/user/gallery">My Gallery</Link></div>
         {notice && <p className="user-plan-message" role="status">{notice}</p>}
         {loading ? (
           <div className="user-dashboard-empty-state" role="status">Loading your plans…</div>

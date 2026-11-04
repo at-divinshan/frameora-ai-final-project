@@ -3,6 +3,8 @@
 import secrets
 import time
 
+from app.core.oauth_diagnostics import diagnosed
+
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -49,6 +51,7 @@ def begin(browser: str, remember: bool, user: User | None = None,
     return authorization_url(state, data["nonce"], data["verifier"])
 
 
+@diagnosed("callback_processing")
 def callback(db: Session, state: str, code: str | None, error: str | None, browser: str) -> tuple[str, str]:
     store = get_store()
     try:
@@ -104,6 +107,7 @@ def callback(db: Session, state: str, code: str | None, error: str | None, brows
     return store.put("completion", browser, result, COMPLETION_TTL), "completion"
 
 
+@diagnosed("completion_account_or_jwt")
 def complete(db: Session, handle: str, browser: str):
     require_jwt_configuration()
     store = get_store()

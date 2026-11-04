@@ -1,3 +1,5 @@
+import AIGenerator from "../pages/user/AIGenerator";
+import AIResults from "../pages/user/AIResults";
 import UserProfile from "../pages/user/Profile";
 import UserSettings from "../pages/user/Settings";
 import OwnerProfile from "../pages/owner/Profile";
@@ -80,6 +82,8 @@ export default function AppRoutes() {
                 <Route path={path} element={role === "user" ? <UserDashboard /> : <AdminDashboard />} />
                 {role === "user" && (
                   <>
+                    <Route path="/user/ai" element={<AIGenerator />} />
+                    <Route path="/user/gallery" element={<AIResults />} />
                     <Route path="/user/plans/create" element={<CreatePlan />} />
                     <Route path="/user/plans/:planId/edit" element={<EditPlan />} />
                     <Route path="/user/plans" element={<MyPlans />} />

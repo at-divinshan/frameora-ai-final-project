@@ -4,6 +4,7 @@ import json
 from functools import lru_cache
 
 from app.core.config import settings
+from app.core.oauth_diagnostics import failure, diagnosed
 from app.core.google_oidc import digest, new_secret, rejected, unavailable
 
 AUTH_TTL = 300
@@ -37,6 +38,7 @@ class TransactionStore:
             socket_timeout=3, retry_on_timeout=False,
         )
 
+    @diagnosed("transaction_write")
     def put(self, purpose: str, browser: str, data: dict, ttl: int) -> str:
         handle = new_secret()
         try:
@@ -50,15 +52,20 @@ class TransactionStore:
 
     def consume(self, handle: str, browser: str, purpose: str) -> dict:
         if not handle or len(handle) > 128 or not browser or len(browser) > 128:
+            failure("transaction_input")
             raise rejected()
+        phase = "transaction_read"
         try:
             payload = self.client.eval(CONSUME, 1, PREFIX + digest(handle), digest(browser), purpose)
             if not payload:
                 raise LookupError()
+            phase = "transaction_decrypt"
             return json.loads(self.cipher.decrypt(payload.encode("ascii"), ttl=REGISTRATION_TTL))
         except LookupError:
+            failure("transaction_no_match")
             raise rejected() from None
         except Exception:
+            failure(phase)
             raise unavailable() from None
 
     def limit(self, label: str, maximum: int, seconds: int = 60):

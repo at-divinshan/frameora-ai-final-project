@@ -16,6 +16,7 @@ from app.services import plan_service
 from app.services.photography_suggestions import get_plan_suggestions
 from app.services.suggestions_provider import (
     SuggestionsProvider,
+    SuggestionsProviderError,
     SuggestionsProviderUnavailable,
     get_suggestions_provider,
 )
@@ -73,6 +74,11 @@ async def create_plan_suggestions(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Photography suggestions are not available yet. Please try again later.",
+        ) from None
+    except SuggestionsProviderError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Photography suggestions could not be generated. Please try again later.",
         ) from None
 
 

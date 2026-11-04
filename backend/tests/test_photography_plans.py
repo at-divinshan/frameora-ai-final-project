@@ -19,7 +19,11 @@ from app.models.photography_plan import PhotographyPlan
 from app.models.user import User
 from app.schemas.photography_suggestions import PhotographySuggestions
 from app.services.photography_suggestions import build_suggestions_prompt
-from app.services.suggestions_provider import get_suggestions_provider
+from app.services.suggestions_provider import (
+    SuggestionsProviderError,
+    UnconfiguredSuggestionsProvider,
+    get_suggestions_provider,
+)
 
 
 @compiles(VARBINARY, "sqlite")
@@ -299,11 +303,33 @@ class PhotographyPlanApiTests(unittest.TestCase):
 
     def test_suggestions_endpoint_reports_unconfigured_provider_without_external_call(self):
         created = self.client.post("/plans", headers=self.headers, json=self.payload()).json()
-        response = self.client.post(
-            f"/plans/{created['id']}/suggestions", headers=self.headers
-        )
+        app.dependency_overrides[get_suggestions_provider] = UnconfiguredSuggestionsProvider
+        try:
+            response = self.client.post(
+                f"/plans/{created['id']}/suggestions", headers=self.headers
+            )
+        finally:
+            app.dependency_overrides.pop(get_suggestions_provider, None)
         self.assertEqual(response.status_code, 503)
         self.assertIn("not available yet", response.json()["detail"])
+
+    def test_suggestions_endpoint_sanitizes_provider_failures(self):
+        created = self.client.post("/plans", headers=self.headers, json=self.payload()).json()
+
+        class FailedProvider:
+            async def generate(self, prompt):
+                raise SuggestionsProviderError("Provider details must not reach clients.")
+
+        app.dependency_overrides[get_suggestions_provider] = FailedProvider
+        try:
+            response = self.client.post(
+                f"/plans/{created['id']}/suggestions", headers=self.headers
+            )
+        finally:
+            app.dependency_overrides.pop(get_suggestions_provider, None)
+
+        self.assertEqual(response.status_code, 502)
+        self.assertNotIn("Provider details", response.text)
 
     def test_suggestions_response_requires_six_categories_and_three_short_strings_each(self):
         response = {

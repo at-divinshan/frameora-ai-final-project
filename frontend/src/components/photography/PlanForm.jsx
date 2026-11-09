@@ -15,6 +15,9 @@ const initialValues = {
   pose_preference: "",
   camera_angle_preference: "",
   outfit_color: "",
+  clothing_style: "",
+  outfit_details: "",
+  extra_instructions: "",
   equipment_device_type: "",
   equipment_camera_model: "",
   equipment_lens: "",
@@ -22,6 +25,7 @@ const initialValues = {
 };
 
 const preferenceFields = [
+  ["clothing_style", "Clothing Style", ["Casual", "Formal", "Traditional", "Streetwear", "Other"]],
   ["photography_style", "Photography Style", ["Cinematic", "Natural", "Traditional", "Creative"]],
   ["lighting_preference", "Lighting Preference", ["Natural Light", "Golden Hour", "Studio Light", "Low Light"]],
   ["pose_preference", "Pose Preference", ["Natural", "Candid", "Formal", "Creative"]],
@@ -33,6 +37,9 @@ export function buildPlanPreferences(values) {
   for (const [field] of preferenceFields) {
     const value = values[field]?.trim();
     preferences[field] = value || null;
+  }
+  for (const field of ["outfit_details", "extra_instructions"]) {
+    preferences[field] = values[field]?.trim() || null;
   }
   const outfitColor = values.outfit_color?.trim();
   preferences.outfit_color = outfitColor || null;
@@ -52,7 +59,7 @@ export function mapPlanToFormValues(plan) {
   }
   if (!preferences || typeof preferences !== "object" || Array.isArray(preferences)) preferences = {};
   const formValues = { ...initialValues };
-  for (const key of ["photography_style", "lighting_preference", "pose_preference", "camera_angle_preference", "outfit_color"]) {
+  for (const key of ["photography_style", "lighting_preference", "pose_preference", "camera_angle_preference", "outfit_color", "clothing_style", "outfit_details", "extra_instructions"]) {
     formValues[key] = typeof preferences[key] === "string" ? preferences[key] : "";
   }
   const equipment = preferences.equipment && typeof preferences.equipment === "object" && !Array.isArray(preferences.equipment)
@@ -96,6 +103,9 @@ export function validatePhotographyPlanForm(values) {
   if (cameraModel.length > 100) errors.equipment_camera_model = "Use 100 characters or fewer.";
   if (lens.length > 100) errors.equipment_lens = "Use 100 characters or fewer.";
   if (additionalEquipment.length > 300) errors.equipment_additional_equipment = "Use 300 characters or fewer.";
+  for (const [field, limit] of [["outfit_details", 1000], ["extra_instructions", 2000]]) {
+    if ((values[field]?.trim().length || 0) > limit) errors[field] = `Use ${limit} characters or fewer.`;
+  }
   return errors;
 }
 
@@ -192,6 +202,16 @@ export default function PlanForm({
         onChange={change}
         maxLength={50}
       />
+      {[ ["outfit_details", "Outfit Details", 1000, "Describe clothing, colors and accessories…"],
+         ["extra_instructions", "Extra Instructions", 2000, "Any additional photography preferences…"] ].map(([name, label, limit, placeholder]) => (
+        <div className="form-field" key={name}>
+          <label htmlFor={name}>{label} (optional)</label>
+          <textarea className="user-plan-textarea" id={name} name={name} rows={3} maxLength={limit}
+            value={values[name]} onChange={change} placeholder={placeholder}
+            aria-invalid={Boolean(errors[name])} aria-describedby={errors[name] ? `${name}-error` : undefined} />
+          {errors[name] && <span className="field-error" id={`${name}-error`} role="alert">{errors[name]}</span>}
+        </div>
+      ))}
       <fieldset className="user-plan-equipment">
         <legend>Photography Equipment (Optional)</legend>
         <p>Tell us what you have available. Professional camera equipment is not required.</p>

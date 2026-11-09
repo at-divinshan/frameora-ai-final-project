@@ -7,7 +7,19 @@ export function onboardingDestination(status, path) {
   const destination = onboardingRoutes[status];
   if (!destination) throw new Error('Unknown onboarding state');
   if (status === 'pending_plan' && path === '/owner/studio-setup') return null;
-  if (status === 'completed' && ['/owner/profile', '/owner/settings', '/owner/subscription', '/owner/studio-setup'].includes(path)) return null;
+  if (status === 'completed' && (
+    [
+      '/owner/profile',
+      '/owner/settings',
+      '/owner/subscription',
+      '/owner/studio-setup',
+      '/owner/ai/generate',
+      '/owner/ai/gallery',
+      '/owner/account-history',
+      '/owner/projects',
+      '/owner/projects/create',
+    ].includes(path) || /^\/owner\/projects\/[^/]+$/.test(path)
+  )) return null;
   return path === destination ? null : destination;
 }
 export function validateStudio(values) {

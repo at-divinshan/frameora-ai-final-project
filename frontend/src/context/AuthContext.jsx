@@ -2,7 +2,7 @@ import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { setAccessToken, setUnauthorizedHandler } from "../services/api";
 import {
   AUTH_STORAGE_KEY, clearStoredSession, getCurrentUser, loginUser,
-  readStoredSession, storeSession,
+  readStoredSession, storeSession, upgradeUserToOwner,
 } from "../services/authService";
 import { clearGoogleFlow } from "../services/googleAuthService";
 import { getProfile, getProfilePicture } from "../services/userService";
@@ -141,6 +141,33 @@ export function AuthProvider({ children }) {
     return data.user;
   }
 
+  const becomeStudioOwner = useCallback(async () => {
+    const started = revision.current;
+    const identity = userRef.current;
+    if (!identity || identity.role !== "user") {
+      throw new Error("Sign in as a Normal User to upgrade this account.");
+    }
+    let rememberMe = false;
+    try { rememberMe = Boolean(window.localStorage.getItem(AUTH_STORAGE_KEY)); } catch { /* Storage may be disabled. */ }
+    const data = await upgradeUserToOwner({ remember_me: rememberMe });
+    if (started !== revision.current || userRef.current?.id !== identity.id) {
+      throw new Error("Studio Owner upgrade was cancelled.");
+    }
+    if (!data.user || data.user.id !== identity.id || data.user.role !== "owner" ||
+        typeof data.access_token !== "string" || !data.access_token ||
+        !Number.isFinite(data.expires_in) || data.expires_in <= 0) {
+      throw new Error("Invalid Studio Owner upgrade response.");
+    }
+    revision.current += 1;
+    const saved = storeSession(data, rememberMe);
+    setAccessToken(saved.accessToken);
+    setSession(saved);
+    setUser(data.user);
+    setAuthError("");
+    setLoading(false);
+    return data.user;
+  }, []);
+
   const googleAuthenticate = useCallback(async (request, remember = false) => {
     const currentRevision = ++revision.current;
     const data = await request();
@@ -162,7 +189,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{ user, loading, authError, login, logout, googleAuthenticate,
-      refreshProfile, pictureUrl, pictureLoading, pictureError, refreshPicture }}>
+      refreshProfile, becomeStudioOwner, pictureUrl, pictureLoading, pictureError, refreshPicture }}>
       {children}
     </AuthContext.Provider>
   );

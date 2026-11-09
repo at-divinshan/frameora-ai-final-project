@@ -4,7 +4,7 @@ export async function getFreeGenerationEligibility() {
   const { data } = await api.get("/ai/free-generation/eligibility");
   return data;
 }
-export async function generateImages({ planId, description, reference }) {
+export async function generateImages({ planId, description = "", reference }) {
   const body = new FormData();
   body.append("plan_id", planId);
   body.append("description", description);

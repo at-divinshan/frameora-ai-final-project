@@ -55,10 +55,29 @@ class PhotographyEquipment(BaseModel):
     )
 
 
+class ClothingPreferences(BaseModel):
+    model_config = ConfigDict(extra="ignore", strict=True)
+
+    clothing_style: Literal["Casual", "Formal", "Traditional", "Streetwear", "Other"] | None = None
+    outfit_details: StrictStr | None = Field(default=None, max_length=1000)
+    extra_instructions: StrictStr | None = Field(default=None, max_length=2000)
+
+    @field_validator("outfit_details", "extra_instructions")
+    @classmethod
+    def clean_multiline(cls, value):
+        if value is None:
+            return None
+        if any(unicodedata.category(char).startswith("C") and char not in "\n\r\t" for char in value):
+            raise ValueError("Enter valid text.")
+        return value.strip() or None
+
+
 def validate_preferences(value):
-    if isinstance(value, dict) and "equipment" in value and value["equipment"] is not None:
-        equipment = PhotographyEquipment.model_validate(value["equipment"])
-        return {**value, "equipment": equipment.model_dump(exclude_unset=True)}
+    if isinstance(value, dict):
+        value = {**value, **ClothingPreferences.model_validate(value).model_dump(exclude_unset=True)}
+        if value.get("equipment") is not None:
+            equipment = PhotographyEquipment.model_validate(value["equipment"])
+            value["equipment"] = equipment.model_dump(exclude_unset=True)
     return value
 
 

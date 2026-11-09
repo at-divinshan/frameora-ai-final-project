@@ -3,6 +3,8 @@ import calendar
 from datetime import datetime
 from hashlib import sha256
 from sqlalchemy import select
+from fastapi import HTTPException
+from app.models.subscription_plan import SubscriptionPlan
 from app.models.credit_transaction import CreditTransaction
 
 
@@ -31,7 +33,11 @@ def balance(db, subscription, now, grant=False):
         CreditTransaction.period_start == start,
         CreditTransaction.period_end == end,
     ).execution_options(populate_existing=True).with_for_update()))
-    allowance = 100 if subscription.plan_kind == "trial" else 10
+    plan = db.get(SubscriptionPlan, subscription.plan_id)
+    if (plan is None or plan.code != subscription.plan_kind or plan.user_role != "owner"
+            or not plan.is_active or plan.monthly_credits < 0):
+        raise HTTPException(503, "Subscription credits are unavailable.")
+    allowance = plan.monthly_credits
     granted = any(row.transaction_type == "grant" for row in rows)
     if not granted and grant:
         key = sha256(f"grant:{subscription.id}:{start.isoformat()}".encode()).digest()
@@ -41,4 +47,6 @@ def balance(db, subscription, now, grant=False):
         db.flush()
     # A read can describe the current allowance without inserting a ledger row.
     remaining = sum(row.credits_change for row in rows) + (0 if granted else allowance)
-    return max(0, remaining), start, end
+    if remaining < 0:
+        raise HTTPException(503, "Credit ledger requires review.")
+    return remaining, start, end

@@ -1,3 +1,4 @@
+import { safeShareReturn } from "../utils/shareReturn";
 import api from "./api";
 
 const FLOW_KEY = "frameora.google.flow";
@@ -39,10 +40,10 @@ export function googleErrorMessage(error) {
   }
 }
 
-export async function startGoogle({ remember = false, link = false, password, userId } = {}) {
+export async function startGoogle({ remember = false, link = false, password, userId, returnTo } = {}) {
   clearGoogleFlow();
   // Verify storage before starting a browser-bound transaction. Never store passwords/tokens here.
-  const flow = { mode: link ? "link" : "login", remember, userId: link ? userId : undefined, stage: "pending", expiresAt: Date.now() + 300000 };
+  const flow = { returnTo: link ? null : safeShareReturn(returnTo), mode: link ? "link" : "login", remember, userId: link ? userId : undefined, stage: "pending", expiresAt: Date.now() + 300000 };
   saveFlow(flow);
   try {
     const path = link ? "/auth/google/link/start" : "/auth/google/start";

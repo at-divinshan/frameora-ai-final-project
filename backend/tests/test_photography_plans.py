@@ -152,6 +152,32 @@ class PhotographyPlanApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 422)
 
+    def test_clothing_preferences_round_trip_merge_clear_and_suggestions(self):
+        preferences = {"clothing_style": "Traditional", "outfit_details": "Cream sari, gold earrings",
+                       "extra_instructions": "Keep jewelry visible.\nSoft expressions.",
+                       "outfit_color": "Cream", "custom": "preserve"}
+        created = self.client.post("/plans", headers=self.headers, json=self.payload(preferences=preferences))
+        self.assertEqual(created.status_code, 201, created.text)
+        plan_id = created.json()["id"]
+        fetched = self.client.get(f"/plans/{plan_id}", headers=self.headers)
+        self.assertEqual(fetched.json()["preferences"], preferences)
+        with Session(self.engine) as db:
+            prompt = build_suggestions_prompt(db.get(PhotographyPlan, plan_id))
+            for field in ("clothing_style", "outfit_details", "extra_instructions", "outfit_color"):
+                self.assertIn(preferences[field], prompt)
+        updated = self.client.patch(f"/plans/{plan_id}", headers=self.headers,
+            json={"preferences": {"outfit_details": "Updated outfit", "extra_instructions": None}})
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.json()["preferences"]["outfit_details"], "Updated outfit")
+        self.assertEqual(updated.json()["preferences"]["custom"], "preserve")
+        self.assertEqual(updated.json()["preferences"]["clothing_style"], "Traditional")
+        self.assertNotIn("extra_instructions", updated.json()["preferences"])
+        for invalid in ({"clothing_style": "invalid"}, {"outfit_details": []},
+                        {"outfit_details": "x" * 1001}, {"extra_instructions": "x" * 2001},
+                        {"extra_instructions": "bad\x00text"}):
+            response = self.client.patch(f"/plans/{plan_id}", headers=self.headers, json={"preferences": invalid})
+            self.assertEqual(response.status_code, 422, response.text)
+
     def test_equipment_is_optional_validated_and_merged_without_losing_preferences(self):
         created = self.client.post(
             "/plans",

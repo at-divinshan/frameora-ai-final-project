@@ -444,3 +444,6 @@
   .admin-users-table { min-width: 570px; }
   .admin-empty-state { align-items: flex-start; max-width: calc(100vw - 44px); text-align: left; }
 }
+
+.user-plan-textarea { width: 100%; min-width: 0; box-sizing: border-box; resize: vertical; padding: 12px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-panel); color: var(--text-main); font: inherit; line-height: 1.6; }
+.user-plan-preference-list dd { white-space: pre-wrap; overflow-wrap: anywhere; }

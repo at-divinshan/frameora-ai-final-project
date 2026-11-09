@@ -90,6 +90,23 @@ def clock():
     return datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
 
 
+def resolve_effective(db, user_id, active, available, now, *, persist=False):
+    """Shared expiry transition. Caller holds the User lock; no commit here."""
+    if active is None or active.end_date is None or now < active.end_date:
+        return active
+    previous = active
+    if persist:
+        previous.status = 'expired'
+        db.flush()  # Release the unique active slot before inserting Basic.
+    active = Subscription(user_id=user_id, plan_id=available['basic'].id, plan_kind='basic',
+        start_date=previous.end_date, status='active',
+        activation_key=sha256(f'fallback:{previous.id}'.encode()).digest())
+    if persist:
+        db.add(active)
+        db.flush()
+    return active
+
+
 def snapshot(db, user, action=None, key=None):
     """GET is read-only; POST persists lazy expiry and current-period grants atomically."""
     try:
@@ -120,18 +137,7 @@ def snapshot(db, user, action=None, key=None):
             raise HTTPException(409, "Idempotency key was already used for a different plan.")
         if action == 'trial' and used and not replay:
             raise HTTPException(409, "The free trial has already been used.")
-        expired = active and active.end_date is not None and now >= active.end_date
-        if expired:
-            anchor = active.end_date
-            previous = active
-            if action:
-                previous.status = 'expired'
-                db.flush()
-            active = Subscription(user_id=current.id, plan_id=available['basic'].id, plan_kind='basic',
-                start_date=anchor, status='active', activation_key=sha256(f'fallback:{previous.id}'.encode()).digest())
-            if action:
-                db.add(active)
-                db.flush()
+        active = resolve_effective(db, current.id, active, available, now, persist=bool(action))
         if active and active.plan_kind == 'pro':
             raise HTTPException(503, "Paid activation is not available.")
         if action == 'basic' and active and active.plan_kind == 'trial':
@@ -149,7 +155,7 @@ def snapshot(db, user, action=None, key=None):
             return {'plan': None, 'remaining_credits': 0, 'trial_available': not used, 'period_start': None, 'period_end': None}
         if active.id is None:  # Read-only virtual fallback, no persistent ledger yet.
             from app.services.credit_service import period
-            remaining, (start, end) = 10, period(active, now)
+            remaining, (start, end) = available['basic'].monthly_credits, period(active, now)
         else:
             remaining, start, end = balance(db, active, now, grant=bool(action))
         if action:

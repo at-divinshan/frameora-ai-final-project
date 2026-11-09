@@ -23,9 +23,12 @@ const preferenceLabels = [
   ["pose_preference", "Pose"],
   ["camera_angle_preference", "Camera Angle"],
   ["outfit_color", "Outfit Color"],
+  ["clothing_style", "Clothing Style"],
+  ["outfit_details", "Outfit Details"],
+  ["extra_instructions", "Extra Instructions"],
 ];
 
-function preferenceEntries(value) {
+export function preferenceEntries(value) {
   if (typeof value === "string") {
     try { value = JSON.parse(value); } catch { return []; }
   }
@@ -138,6 +141,9 @@ export default function PlanCard({ plan, onDeleted }) {
         >
           <Sparkles size={15} aria-hidden="true" /> {suggestionsLoading ? "Getting Suggestions…" : "AI Suggestions"}
         </button>
+        <Link className="user-plan-action-secondary" to={`/user/ai?plan=${plan.id}`}>
+          <Sparkles size={15} aria-hidden="true" /> Generate Images
+        </Link>
         <Link
           className="user-dashboard-create-button"
           to={`/user/plans/${plan.id}/edit`}

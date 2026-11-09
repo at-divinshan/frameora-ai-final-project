@@ -30,15 +30,13 @@ def free_generation_eligibility(
 def generate_images(
     response: Response,
     plan_id: int = Form(..., gt=0),
-    description: str = Form(..., min_length=3, max_length=2000),
+    description: str = Form("", max_length=2000),
     reference: UploadFile | None = File(None),
     user: User = Depends(normal_user),
     db: Session = Depends(get_db),
 ):
     response.headers["Cache-Control"] = "no-store"
     normalized = None
-    if len(description.strip()) < 3:
-        raise HTTPException(422, "Describe your subject and setting.")
     if reference is not None:
         try:
             if reference.content_type not in ("image/jpeg", "image/png", "image/webp"):

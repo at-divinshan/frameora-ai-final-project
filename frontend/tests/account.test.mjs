@@ -80,7 +80,8 @@ export async function adminRequests() {
 }
 export function studioSprint() {
  for(const phone of ['0771234567','+94771234567']) assert.deepEqual(validateStudio({studio_name:'Studio',studio_phone:phone,studio_address:'1 Road',studio_city:'Jaffna'}),{});
- for(const path of ['/owner/subscription','/owner/studio-setup','/owner/dashboard']) assert.equal(onboardingDestination('completed',path),null);
+ for(const path of ['/owner/subscription','/owner/studio-setup','/owner/dashboard','/owner/ai/generate','/owner/ai/gallery','/owner/projects','/owner/projects/create','/owner/projects/42']) assert.equal(onboardingDestination('completed',path),null);
+ assert.equal(onboardingDestination('completed','/owner/projects/42/edit'),'/owner/dashboard');
  assert.throws(()=>onboardingDestination('unknown','/owner/dashboard'));
  assert.equal(validateStudioPhoto({type:'image/webp',size:1024}),'');
  assert.ok(validateStudioPhoto({type:'image/svg+xml',size:1024}));
@@ -160,9 +161,14 @@ export async function ownerOnboarding() {
  assert.equal(onboardingDestination('pending_plan','/owner/studio-setup'),null);
  assert.equal(onboardingDestination('pending_plan','/owner/dashboard'),'/owner/subscription');
  assert.equal(onboardingDestination('pending_plan','/owner/subscription'),null);
+ assert.equal(onboardingDestination('pending_plan','/owner/projects'),'/owner/subscription');
+ assert.equal(onboardingDestination('pending_studio','/owner/projects'),'/owner/studio-setup');
  assert.equal(onboardingDestination('completed','/owner/subscription'),null);
  assert.equal(onboardingDestination('completed','/owner/dashboard'),null);
  assert.equal(onboardingDestination('completed','/owner/profile'),null);
+ assert.equal(onboardingDestination('completed','/owner/ai/generate'),null);
+ assert.equal(onboardingDestination('completed','/owner/ai/gallery'),null);
+ for (const path of ['/owner/projects', '/owner/projects/create', '/owner/projects/42']) assert.equal(onboardingDestination('completed',path),null);
  let calls=0;
  const ownerId='onboarding-cache-test';
  api.defaults.adapter=async config=>{ calls++; return {data:config.url==='/owner/studio'?{onboarding_status:'pending_plan'}:{onboarding_status:'pending_studio'},status:200,statusText:'OK',headers:{},config}; };
@@ -251,6 +257,16 @@ export function route(role,target,page) {
  assert.ok(html.includes(page==='profile' ? 'Loading profile' : 'Loading privacy settings'));
  if(role==='admin') assert.ok(!html.includes('Link Google account'));
 }
+export function ownerAIRoutes() {
+ for(const path of ['/owner/ai/generate','/owner/ai/gallery']) {
+  for(const role of ['owner','user','admin']) {
+   const user={id:'owner-ai-route-fixture',name:'Test Account',role};
+   const html=renderToStaticMarkup(<AuthContext.Provider value={{user,loading:false}}><ThemeProvider><MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter></ThemeProvider></AuthContext.Provider>);
+   if(role==='owner') assert.ok(html.includes('Loading your studio…'),path);
+   else assert.ok(!html.includes('Studio AI Image Generation'),role+' '+path);
+  }
+ }
+}
 `;
 const result = await build({stdin:{contents:source,resolveDir:process.cwd(),loader:'jsx'},bundle:true,write:false,platform:'node',format:'esm',packages:'external',jsx:'automatic',loader:{'.css':'empty'},define:{'import.meta.env':'{}'}});
 // Keep external dependencies resolvable from the existing frontend installation.
@@ -275,6 +291,7 @@ test('studio edits preserve onboarding gates and completed save destination',che
 test('unsaved photos and running uploads block navigation and unload, then release safely',checks.studioNavigationSafety);
 test('profile and file validation',checks.validation);
 test('owner onboarding validation, redirects, and request deduplication',checks.ownerOnboarding);
+test('new owner AI routes stay inside authenticated owner role routing',checks.ownerAIRoutes);
 test('password controls disabled and Google controls excluded for Admin',checks.security);
 test('API allowlists, raw uploads and safe image responses',checks.payloads);
 for(const role of [null,'user','owner','admin']) for(const target of ['user','owner','admin']) for(const page of ['profile','settings']) {

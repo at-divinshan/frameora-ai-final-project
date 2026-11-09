@@ -114,6 +114,7 @@ try {
       photography_style: "Cinematic", lighting_preference: "Golden Hour",
       pose_preference: "Candid", camera_angle_preference: "Eye Level",
       outfit_color: "Blue",
+      clothing_style: null, outfit_details: null, extra_instructions: null,
       equipment: { device_type: null, camera_model: null, lens: null, additional_equipment: null },
     });
     assert.deepEqual(buildPlanPreferences({
@@ -129,6 +130,7 @@ try {
     }), {
       photography_style: null, lighting_preference: null, pose_preference: null, camera_angle_preference: null,
       outfit_color: null,
+      clothing_style: null, outfit_details: null, extra_instructions: null,
       equipment: { device_type: "Smartphone", camera_model: "Pixel", lens: null, additional_equipment: null },
     });
     assert.ok(validatePhotographyPlanForm({ ...valid, photography_type: "" }).photography_type);
@@ -201,6 +203,7 @@ try {
       pose_preference: "Candid",
       camera_angle_preference: "Eye Level",
       outfit_color: "Blue",
+      clothing_style: "", outfit_details: "", extra_instructions: "",
       equipment_device_type: "Mirrorless",
       equipment_camera_model: "Sony a7",
       equipment_lens: "35mm",
@@ -214,6 +217,19 @@ try {
     for (const value of ["Portrait", "Indoor", "Jaffna Studio", "2026-11-15T05:00", "Sony a7", "35mm", "Tripod"]) assert.ok(html.includes(value));
     for (const label of ["Natural", "Golden Hour", "Candid", "Eye Level", "Blue"]) assert.ok(html.includes(label));
     assert.ok(html.includes("Save Changes"));
+  });
+
+  test("new clothing fields survive edit mapping and appear beside the plan generation link", () => {
+    const preferences = { clothing_style: "Streetwear", outfit_details: "Blue jacket, silver rings", extra_instructions: "Soft smile\nShow accessories" };
+    const values = mapPlanToFormValues({ photography_type: "Portrait", environment: "Outdoor", preferences });
+    const saved = buildPlanPreferences(values);
+    for (const key of Object.keys(preferences)) assert.equal(saved[key], preferences[key]);
+    const html = renderCard(preferences);
+    assert.ok(html.includes('href="/user/ai?plan=21"'));
+    for (const value of Object.values(preferences)) assert.ok(html.includes(value));
+    const form = renderToStaticMarkup(React.createElement(PlanForm, { initialValues: values }));
+    for (const field of ["clothing_style", "outfit_details", "extra_instructions"]) assert.ok(form.includes(`name="${field}"`));
+    assert.ok(validatePhotographyPlanForm({...values, extra_instructions: "x".repeat(2001)}).extra_instructions);
   });
 
   test("delete confirmation is initially absent and dialog is accessible when requested", () => {

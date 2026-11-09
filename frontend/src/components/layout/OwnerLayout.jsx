@@ -12,8 +12,10 @@ import useTheme from "../../hooks/useTheme";
 import "../../styles/dashboard.css";
 
 const navigation = [
-  { label: "Customer Projects", icon: FolderOpen },
-  { label: "AI Preview", icon: Images },
+  { label: "Photoshoots", icon: FolderOpen, path: "/owner/projects" },
+  { label: "AI Image Generation", icon: Images, path: "/owner/ai/generate" },
+  { label: "AI Gallery", icon: Images, path: "/owner/ai/gallery" },
+  { label: "Previous Account Data", icon: ClipboardList, path: "/owner/account-history" },
   { label: "Equipment", icon: Camera },
   { label: "Share Links", icon: Link2 },
   { label: "Subscription", icon: CreditCard, path: "/owner/subscription" },

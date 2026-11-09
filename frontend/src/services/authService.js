@@ -57,6 +57,11 @@ export async function loginUser(data) {
   return response.data;
 }
 
+export async function upgradeUserToOwner(data) {
+  const response = await api.post("/users/me/upgrade-to-owner", data);
+  return response.data;
+}
+
 export async function registerUser(data) {
   const response = await api.post("/auth/register", data);
   return response.data;

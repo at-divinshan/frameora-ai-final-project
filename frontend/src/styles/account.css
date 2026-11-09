@@ -45,6 +45,21 @@
 .studio-plan-pro { border-color: #cf83c9; }
 .studio-plan-price { font-size: 26px; font-weight: 700; }
 .studio-plan-badge { background: var(--account-gradient); color: #171421; padding: 6px 12px; border-radius: 20px; align-self: flex-start; }
+.user-subscription-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.user-subscription-card { display: flex; flex-direction: column; gap: 12px; }
+.user-subscription-card h2, .user-subscription-card p { margin: 0; }
+.user-subscription-card .studio-plan-price { color: var(--account-text); }
+.user-subscription-card .studio-plan-price span { font-size: 15px; font-weight: 400; }
+.user-subscription-card .user-dashboard-create-button { width: 100%; margin-top: auto; }
+.user-subscription-card .user-dashboard-create-button:disabled { opacity: .55; cursor: not-allowed; }
+.user-owner-upgrade-card { border-color: #8b63ff; }
+.user-owner-upgrade-card ul { color: var(--account-muted); line-height: 1.7; padding-left: 20px; }
+.user-history-plan-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.user-history-plan-grid .account-details { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.user-history-plan-grid .account-details dd { overflow-wrap: anywhere; }
+.user-plan-page > section { margin-top: 30px; }
+@media (max-width: 1150px) { .user-subscription-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .user-subscription-grid, .user-history-plan-grid { grid-template-columns: minmax(0, 1fr); } .user-history-plan-grid .account-details { grid-template-columns: minmax(0, 1fr); } }
 .studio-photo { margin-block: 24px; }
 .account-grid > .studio-photo { margin-block: 0; }
 .studio-photo-preview { width: 100%; max-width: 512px; height: 220px; object-fit: contain; border-radius: 12px; background: var(--account-input); }
@@ -93,3 +108,44 @@
   .admin-owner-filters select { width: 100%; }
   .admin-owner-pagination > span { width: 100%; }
 }
+.customer-project-page .account-heading { flex-wrap: wrap; }
+.customer-project-page h2 { overflow-wrap: anywhere; }
+.customer-project-page .account-details { margin-block: 20px; }
+.customer-project-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.customer-project-form .account-grid { column-gap: 24px; row-gap: 0; }
+.customer-project-form input[type="date"] { color-scheme: dark; }
+[data-theme="light"] .customer-project-form input[type="date"] { color-scheme: light; }
+.project-workspace { display: grid; gap: 20px; margin-top: 24px; }
+.project-workspace > .account-secondary { justify-self: start; }
+.project-linked-plan { margin-block: 18px; padding-block: 16px; border-top: 1px solid var(--account-border); overflow-wrap: anywhere; }
+.project-linked-plan summary { cursor: pointer; font-weight: 600; }
+.project-workspace form { margin-top: 20px; }
+.project-workspace .user-plan-form { --dashboard-text: var(--account-text); --dashboard-search: var(--account-input); --dashboard-line: var(--account-border); }
+/* Studio actions use the existing owner theme, including shared plan/gallery controls. */
+.owner-dashboard .user-dashboard-create-button, .owner-dashboard .owner-gradient-button, .owner-dashboard .gradient-button {
+  background: var(--owner-gradient); color: #fff; min-height: 44px; font-weight: 700; text-decoration: none;
+}
+.owner-dashboard .account-page .account-secondary {
+  background: var(--owner-input); color: var(--owner-text); border: 1px solid var(--owner-border); min-height: 44px;
+}
+.owner-dashboard .account-page .owner-gradient-button:disabled, .owner-dashboard .account-page .gradient-button:disabled { opacity: .55; cursor: not-allowed; }
+.photoshoot-form { display: grid; gap: 24px; }
+.photoshoot-form > fieldset { margin: 0; min-width: 0; }
+.photoshoot-form legend { padding: 0 8px; font-size: 18px; font-weight: 700; }
+.photoshoot-form .account-grid { gap: 0 24px; }
+.photoshoot-form details summary, .project-workspace details > summary { cursor: pointer; font-weight: 650; padding-block: 8px; }
+.photoshoot-form details .account-grid { margin-top: 18px; }
+.photoshoot-form .owner-customization { border: 0; margin: 0; padding: 0; min-width: 0; }
+.photoshoot-form .owner-customization legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.photoshoot-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.photoshoot-actions .account-secondary { margin: 0; }
+.photoshoot-steps { display: flex; flex-wrap: wrap; gap: 12px 32px; padding: 18px 18px 18px 38px; border: 1px solid var(--account-border); border-radius: 12px; background: var(--account-panel); margin-bottom: 24px; }
+.photoshoot-form input[type="date"], .photoshoot-form input[type="time"] { color-scheme: dark; }
+[data-theme="light"] .photoshoot-form input[type="date"], [data-theme="light"] .photoshoot-form input[type="time"] { color-scheme: light; }
+.project-workspace #gallery, .project-workspace #share-customer { scroll-margin-top: 24px; }
+.owner-image-preview { position: relative; display: block; width: 100%; padding: 0; border: 0; cursor: zoom-in; background: var(--account-input); color: var(--account-text); }
+.owner-image-preview span { display: block; padding: 8px; font-size: 13px; }
+.owner-image-dialog { max-width: min(1100px, 94vw); max-height: 94vh; padding: 16px; border: 1px solid var(--account-border); border-radius: 14px; color: var(--account-text); background: var(--account-panel); }
+.owner-image-dialog::backdrop { background: #020711d9; }
+.owner-image-dialog img { max-height: 78vh; max-width: 100%; width: auto; object-fit: contain; margin: 12px auto 0; }
+@media (max-width: 640px) { .photoshoot-actions { flex-direction: column; align-items: stretch; } .photoshoot-actions > * { width: 100%; text-align: center; } .photoshoot-steps { gap: 12px 28px; font-size: 13px; } }

@@ -1,19 +1,27 @@
 """Authenticated Studio Owner onboarding; no public studio data or plan activation."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import require_roles
 from app.database.connection import get_db
 from app.models.user import User
+from app.schemas.ai import GenerationResponse
 from app.schemas.owner import OwnerOnboarding, StudioUpdate
 from app.services import onboarding_service
+from app.services import ai_service, plan_service
+from app.schemas.photography_plan import PhotographyPlanRead
 
 
 def owner_request(request: Request, response: Response):
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
-    if request.query_params:
+    history_page = (
+        request.url.path == "/owner/account-history/generations"
+        and len(request.query_params.multi_items()) == 1
+        and request.query_params.get("before") is not None
+    )
+    if request.query_params and not history_page:
         raise HTTPException(422, "Query parameters are not supported.")
 
 
@@ -24,6 +32,26 @@ owner_identity = require_roles("owner")
 @router.get("/onboarding", response_model=OwnerOnboarding)
 def get_onboarding(user: User = Depends(owner_identity), db: Session = Depends(get_db)):
     return onboarding_service.get_onboarding(db, user)
+
+
+@router.get("/account-history/photography-plans", response_model=list[PhotographyPlanRead])
+def account_history_plans(user: User = Depends(owner_identity), db: Session = Depends(get_db)):
+    return plan_service.list_plans(db, user)
+
+
+@router.get("/account-history/generations", response_model=list[GenerationResponse])
+def account_history_generations(before: int | None = Query(None, gt=0),
+                                 user: User = Depends(owner_identity), db: Session = Depends(get_db)):
+    return ai_service.list_generations(db, user, before=before)
+
+
+@router.get("/account-history/images/{asset_id}")
+def account_history_image(asset_id: int, user: User = Depends(owner_identity),
+                          db: Session = Depends(get_db)):
+    return Response(ai_service.get_image(db, user, asset_id), media_type="image/png", headers={
+        "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+        "Content-Disposition": 'inline; filename="frameora.png"',
+    })
 
 
 @router.put("/studio", response_model=OwnerOnboarding)

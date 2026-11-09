@@ -8,7 +8,7 @@ class AIUploadLimit:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http" or scope.get("path", "").rstrip("/") != "/ai/generations" or scope.get("method") != "POST":
+        if scope["type"] != "http" or scope.get("path", "").rstrip("/") not in ("/ai/generations", "/owner/ai/generations") or scope.get("method") != "POST":
             return await self.app(scope, receive, send)
         limit = 6 * 1024 * 1024  # 5 MiB reference plus bounded form overhead.
         body = bytearray()

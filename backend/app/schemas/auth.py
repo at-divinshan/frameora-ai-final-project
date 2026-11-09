@@ -22,6 +22,12 @@ class LoginRequest(AuthCredentials):
     remember_me: bool = False
 
 
+class OwnerUpgradeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    remember_me: bool = False
+
+
 class RegisterRequest(AuthCredentials):
     name: str = Field(min_length=2, max_length=100)
     password: str = Field(min_length=8, max_length=128, repr=False)

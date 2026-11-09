@@ -1,3 +1,4 @@
+import { safeShareReturn } from "../../utils/shareReturn";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../common/Button";
@@ -32,7 +33,7 @@ export default function GoogleRegistrationForm() {
     try {
       const user = await googleAuthenticate(() => registerGoogle({ ...values, name: values.name.trim() }), flow.remember);
       clearGoogleFlow();
-      navigate(dashboardRoute(user.role), { replace: true });
+      navigate(safeShareReturn(flow.returnTo) || dashboardRoute(user.role), { replace: true });
     } catch (failure) { setError(googleErrorMessage(failure)); }
     finally { pending.current = false; setBusy(false); }
   }

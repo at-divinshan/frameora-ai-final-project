@@ -1,3 +1,4 @@
+import { shareReturnFromSearch } from "../../utils/shareReturn";
 import { useState } from "react";
 import { Mail, LockKeyhole, ArrowRight } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -13,6 +14,7 @@ export default function LoginForm({ redirectTo }) {
   const { login, authError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const shareReturn = shareReturnFromSearch(location.search);
   const [values, setValues] = useState({ email: "", password: "" });
   const [remember, setRemember] = useState(false);
   const [errors, setErrors] = useState({});
@@ -40,7 +42,7 @@ export default function LoginForm({ redirectTo }) {
     setLoading(true);
     try {
       const user = await login({ email: values.email.trim(), password: values.password, remember_me: remember });
-      navigate(redirectTo === "/auth/google/link" && user.role !== "admin" ? redirectTo : dashboardRoute(user.role), { replace: true });
+      navigate(redirectTo === "/auth/google/link" && user.role !== "admin" ? redirectTo : shareReturn || dashboardRoute(user.role), { replace: true });
     } catch (failure) {
       setErrors(authFieldErrors(failure));
       const detail = failure.response?.data?.detail;
@@ -65,10 +67,11 @@ export default function LoginForm({ redirectTo }) {
         <Button type="submit" loading={loading} disabled={googleBusy} className="full-width">Login <ArrowRight size={20} aria-hidden="true" /></Button>
       </form>
       <div className="auth-divider"><span>OR</span></div>
-      {!redirectTo && <GoogleButton remember={remember} disabled={loading} onBusyChange={setGoogleBusy} />}
+      {!redirectTo && <GoogleButton returnTo={shareReturn} remember={remember} disabled={loading} onBusyChange={setGoogleBusy} />}
       <p className="auth-switch">Don't have an account?</p>
       <Link className="gradient-button full-width create-account" to="/register">Create Account</Link>
       {!redirectTo && <p className="auth-switch"><Link to="/auth/google/link">Link Google to an existing account</Link></p>}
+      <p className="auth-switch"><small><Link to="/">Back to Home</Link></small></p>
     </>
   );
 }

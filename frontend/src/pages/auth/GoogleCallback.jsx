@@ -1,3 +1,4 @@
+import { safeShareReturn } from "../../utils/shareReturn";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Login from "./Login";
@@ -43,7 +44,7 @@ export default function GoogleCallback() {
       if (result.status === "registration_required") {
         markGoogleRegistration(); setView("register");
       } else {
-        clearGoogleFlow(); navigate(dashboardRoute(result.role), { replace: true });
+        clearGoogleFlow(); navigate(safeShareReturn(flow.returnTo) || dashboardRoute(result.role), { replace: true });
       }
     }).catch((failure) => {
       if (active) { setError(googleErrorMessage(failure)); setView("error"); clearGoogleFlow(); }

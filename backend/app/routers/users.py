@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_user
 from app.database.connection import get_db
 from app.models.user import User
+from app.schemas.auth import OwnerUpgradeRequest, TokenResponse
 from app.schemas.user import ProfileUpdate, SelfProfile
 from app.schemas.user import PrivacySettings, PrivacyUpdate, PublicProfile
 from app.services import user_service
 from app.services import profile_image_service, profile_image_storage
+from app.services import owner_upgrade_service
 
 
 def no_store(response: Response):
@@ -58,6 +60,12 @@ def get_profile(user: User = Depends(get_current_user)):
 def patch_profile(data: ProfileUpdate, user: User = Depends(get_current_user),
                   db: Session = Depends(get_db)):
     return user_service.update_profile(db, user, data)
+
+
+@router.post("/me/upgrade-to-owner", response_model=TokenResponse)
+def upgrade_to_owner(data: OwnerUpgradeRequest, user: User = Depends(get_current_user),
+                     db: Session = Depends(get_db)):
+    return owner_upgrade_service.convert_to_owner(db, user, data.remember_me)
 
 
 @router.get("/me/privacy", response_model=PrivacySettings)

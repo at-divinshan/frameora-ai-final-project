@@ -17,11 +17,26 @@ def list_for_user(db: Session, user_id: int) -> list[PhotographyPlan]:
     )
 
 
-def create_for_user(db: Session, user_id: int, values: dict) -> PhotographyPlan:
-    plan = PhotographyPlan(user_id=user_id, project_id=None, **values)
+def create_for_user(
+    db: Session, user_id: int, values: dict, *, project_id: int | None = None
+) -> PhotographyPlan:
+    plan = PhotographyPlan(user_id=user_id, project_id=project_id, **values)
     db.add(plan)
     db.flush()
     return plan
+
+
+def list_for_project(db: Session, user_id: int, project_id: int) -> list[PhotographyPlan]:
+    return list(
+        db.scalars(
+            select(PhotographyPlan)
+            .where(
+                PhotographyPlan.user_id == user_id,
+                PhotographyPlan.project_id == project_id,
+            )
+            .order_by(PhotographyPlan.created_at.desc(), PhotographyPlan.id.desc())
+        )
+    )
 
 
 def find_for_user(db: Session, user_id: int, plan_id: int) -> PhotographyPlan | None:
@@ -44,6 +59,14 @@ def update_for_user(
         return None
     for field, value in values.items():
         setattr(plan, field, value)
+    db.flush()
+    return plan
+
+
+def link_to_project(
+    db: Session, plan: PhotographyPlan, project_id: int
+) -> PhotographyPlan:
+    plan.project_id = project_id
     db.flush()
     return plan
 

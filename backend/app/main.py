@@ -22,14 +22,18 @@ from app.routers.owner import router as owner_router
 from app.routers.subscriptions import router as subscriptions_router
 from app.routers.plans import router as plans_router
 from app.routers.ai import router as ai_router
+from app.routers.owner_ai import router as owner_ai_router
+from app.routers.projects import router as projects_router
+from app.routers.sharing import router as sharing_router
 from app.services.oauth_transaction_store import close_store
 from app.services.rate_limit_service import close_rate_limits
 
 
 class GoogleAccessLogFilter(logging.Filter):
-    """Uvicorn includes the raw query string (and authorization code) in access logs."""
+    """Uvicorn access logs must not record OAuth codes or share tokens."""
     def filter(self, record):
-        return "/auth/google" not in record.getMessage()
+        message = record.getMessage()
+        return "/auth/google" not in message and "/sharing/" not in message
 
 
 logging.getLogger("uvicorn.access").addFilter(GoogleAccessLogFilter())
@@ -52,7 +56,7 @@ app = FastAPI(title="Frameora AI", lifespan=lifespan)
 @app.middleware("http")
 async def picture_response_protection(request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith("/ai/"):
+    if request.url.path.startswith(("/ai/", "/owner/ai/", "/owner/entitlements")):
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
     if request.url.path.startswith("/users/") and request.url.path.rstrip("/").endswith("/picture"):
@@ -97,6 +101,9 @@ app.include_router(owner_router)
 app.include_router(subscriptions_router)
 app.include_router(plans_router)
 app.include_router(ai_router)
+app.include_router(owner_ai_router)
+app.include_router(projects_router)
+app.include_router(sharing_router)
 
 
 @app.exception_handler(RequestValidationError)

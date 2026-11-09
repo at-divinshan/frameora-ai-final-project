@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Bell, CalendarDays, ClipboardList, Compass, Heart, House, LogOut, Menu, UserRound, Settings, X } from "lucide-react";
+import { Bell, CalendarDays, ClipboardList, Compass, CreditCard, Heart, House, LogOut, Menu, UserRound, Settings, X } from "lucide-react";
 import FrameoraLogo from "../common/FrameoraLogo";
 
 const upcomingItems = [
@@ -28,6 +28,9 @@ export default function Sidebar() {
         <nav aria-label="Main navigation">
           <NavLink className={({ isActive }) => `user-dashboard-nav-item${isActive ? " is-active" : ""}`} to="/user/dashboard" onClick={() => setExpanded(false)}>
             <House size={20} aria-hidden="true" /><span>Home</span>
+          </NavLink>
+          <NavLink className={({ isActive }) => `user-dashboard-nav-item${isActive ? " is-active" : ""}`} to="/user/subscription" onClick={() => setExpanded(false)}>
+            <CreditCard size={20} aria-hidden="true" /><span>Plans</span>
           </NavLink>
           {upcomingItems.map(({ label, icon: Icon }) => label === "My Plans" ? (
             <NavLink key={label} to="/user/plans" className={({ isActive }) => `user-dashboard-nav-item${isActive ? " is-active" : ""}`} onClick={() => setExpanded(false)}>

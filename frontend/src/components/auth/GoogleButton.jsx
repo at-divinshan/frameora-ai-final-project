@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { googleErrorMessage, startGoogle } from "../../services/googleAuthService";
 
-export default function GoogleButton({ remember = false, disabled = false, onBusyChange }) {
+export default function GoogleButton({ returnTo, remember = false, disabled = false, onBusyChange }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const pending = useRef(false);
@@ -16,7 +16,7 @@ export default function GoogleButton({ remember = false, disabled = false, onBus
     setBusy(true);
     onBusyChange?.(true);
     setError("");
-    try { await startGoogle({ remember }); }
+    try { await startGoogle({ remember, returnTo }); }
     catch (failure) { setError(googleErrorMessage(failure)); pending.current = false; setBusy(false); onBusyChange?.(false); }
   }
   return (

@@ -1,6 +1,7 @@
 """Four-image requests on the existing account allowance and private media schema."""
 
 import logging
+import json
 from datetime import datetime, timezone
 import time
 
@@ -14,6 +15,10 @@ from app.models.ai_result import AIResult
 from app.models.media_asset import MediaAsset
 from app.models.user import User
 from app.repositories.user_repository import lock_profile
+from app.repositories import plan_repository
+from app.services.generation_planning import build_image_prompt, planned_shots
+from app.schemas.ai import ImageGuidance
+from pydantic import ValidationError
 from app.services import ai_image_storage as storage
 from app.services import free_generation_service as allowance
 from app.services import pollinations_service as provider
@@ -30,10 +35,23 @@ def generation_view(db: Session, generation: AIGeneration) -> dict:
             MediaAsset.user_id == generation.user_id,
             MediaAsset.asset_type == ASSET_TYPE,
         ).order_by(MediaAsset.id)).all()
+    # Historical generations have no structured guidance. Never invent it on read.
+    guidance = {}
+    try:
+        saved = json.loads(generation.guidance_text or "null")
+        if isinstance(saved, dict) and saved.get("version") == 1 and isinstance(saved.get("images"), dict):
+            for asset_id, value in saved["images"].items():
+                try:
+                    guidance[asset_id] = ImageGuidance.model_validate(value).model_dump()
+                except ValidationError:
+                    continue
+    except (ValueError, TypeError):
+        pass
     return {
         "id": generation.id, "plan_id": generation.plan_id,
         "status": generation.status, "created_at": generation.created_at,
-        "images": [{"id": asset.id, "url": f"/ai/images/{asset.id}"} for asset in assets],
+        "images": [{"id": asset.id, "url": f"/ai/images/{asset.id}",
+                    "guidance": guidance.get(str(asset.id))} for asset in assets],
     }
 
 
@@ -48,6 +66,11 @@ def list_generations(db: Session, user: User, *, before: int | None = None) -> l
 
 def generate(db: Session, user: User, *, plan_id: int, description: str, reference: bytes | None):
     provider.require_configured()
+    plan = plan_repository.find_for_user(db, user.id, plan_id)
+    if plan is None:
+        raise HTTPException(404, "Photography plan not found.")
+    prompt = build_image_prompt(plan, description)
+    shots = planned_shots(plan)
     # Reconcile terminal work left by a lost finalization acknowledgement. Pending
     # work is never expired or released based on age alone.
     allowance.reconcile_interrupted_request(db, user_id=user.id)
@@ -58,7 +81,7 @@ def generate(db: Session, user: User, *, plan_id: int, description: str, referen
     generation_started = time.monotonic()
     try:
         # Do not retain a DB transaction across network calls.
-        images = provider.generate_images(description, reference)
+        images = provider.generate_images(prompt, reference, shots=shots)
         if len(images) != 4 or len(set(images)) != 4:
             raise HTTPException(502, "The provider did not return four different images.")
         stage = "storage"
@@ -81,10 +104,15 @@ def generate(db: Session, user: User, *, plan_id: int, description: str, referen
         generation = db.get(AIGeneration, reservation.generation_id)
         if generation is None or generation.status != allowance.PENDING_STATUS:
             raise HTTPException(409, "The generation is no longer active.")
-        for key in keys:
+        saved_guidance = {}
+        for key, shot in zip(keys, shots):
             db.add(AIResult(generation_id=generation.id))
-            db.add(MediaAsset(user_id=user.id, plan_id=plan_id, generation_id=generation.id,
-                              asset_type=ASSET_TYPE, file_url=key))
+            asset = MediaAsset(user_id=user.id, plan_id=plan_id, generation_id=generation.id,
+                               asset_type=ASSET_TYPE, file_url=key)
+            db.add(asset)
+            db.flush()
+            saved_guidance[str(asset.id)] = shot
+        generation.guidance_text = json.dumps({"version": 1, "images": saved_guidance}, ensure_ascii=False)
         generation.model_name = settings.pollinations_image_model
         generation.status = allowance.SUCCESS_STATUS
         generation.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)

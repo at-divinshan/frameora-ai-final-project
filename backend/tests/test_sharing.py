@@ -1,5 +1,7 @@
 """Share-link API tests use disposable SQLite and private-storage mocks only."""
 
+from io import BytesIO
+from PIL import Image
 from datetime import timedelta
 from hashlib import sha256
 import unittest
@@ -121,7 +123,9 @@ class SharingTests(unittest.TestCase):
         self.assertNotIn("token_hash", listed.text)
         self.assertEqual(listed.json()[0]["generation_id"], self.generation_ids[0])
 
-        with patch.object(ai_image_storage, "read_image", return_value=b"private-image") as read:
+        source = BytesIO()
+        Image.new("RGB", (1600, 1200), "navy").save(source, format="PNG")
+        with patch.object(ai_image_storage, "read_image", return_value=source.getvalue()) as read:
             shared = self.client.get(f"/sharing/{token}", headers=self.auth(1))
             self.assertEqual(shared.status_code, 200, shared.text)
             self.assertEqual(
@@ -133,7 +137,13 @@ class SharingTests(unittest.TestCase):
                 headers=self.auth(1),
             )
             self.assertEqual(image.status_code, 200)
-            self.assertEqual(image.content, b"private-image")
+            self.assertNotEqual(image.content, source.getvalue())
+            self.assertEqual(image.headers['content-type'], 'image/jpeg')
+            preview = Image.open(BytesIO(image.content))
+            self.assertEqual(preview.size, (960, 720))
+            self.assertGreater(len(set(preview.getdata())), 1)
+            self.assertNotIn('file_url', shared.text)
+            self.assertNotIn('image-', shared.text)
             self.assertEqual(read.call_args.args[0], f"image-{self.generation_ids[0]}-0")
 
         unauthorized = self.client.get(f"/sharing/{token}")

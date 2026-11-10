@@ -3,20 +3,11 @@ import { Link, useLocation, useOutletContext } from 'react-router-dom';
 import { ArrowRight, ClipboardList, FolderOpen, Gem, Link2, Plus, Sparkles } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import AccountLayout from '../../components/layout/AccountLayout';
-import StudioPhoto from '../../components/common/StudioPhoto';
 import { getPlans } from '../../services/ownerService';
 import { getOwnerEntitlements } from '../../services/ownerAiService';
 import { ownerError, utcDate, watchSubscriptionRefresh } from '../../utils/subscription';
 import { ownerBatchContractMatches, OWNER_GENERATION_CONTRACT } from '../../config/ownerGeneration';
 
-export function StudioDetails({ studio }) {
-  return <section className="account-card"><h2>{studio?.studio_name || 'Studio details unavailable'}</h2>
-    {studio && <><dl className="account-details"><div><dt>Studio phone</dt><dd>{studio.studio_phone || 'Not provided'}</dd></div>
-      <div><dt>Address</dt><dd>{studio.studio_address || 'Not provided'}{studio.studio_city ? `, ${studio.studio_city}` : ''}</dd></div></dl>
-      {studio.studio_description && <p className="studio-description">{studio.studio_description}</p>}</>}
-    <Link className="account-secondary" to="/owner/studio-setup">Edit studio profile</Link>
-  </section>;
-}
 export default function Dashboard() {
   const { user } = useAuth();
   const { onboarding } = useOutletContext();
@@ -44,7 +35,6 @@ export default function Dashboard() {
       ? <button className="owner-gradient-button owner-new-project" type="button" disabled title="Generation is unavailable until the backend contract is updated">Generation unavailable</button>
       : <Link className="owner-gradient-button owner-new-project" to="/owner/ai/generate"><Plus size={17} />Generate Images</Link>}</section>
     {state?.planActivated && <div className="account-notice" role="status">Your subscription is ready.</div>}
-    <div className="account-grid"><StudioDetails studio={onboarding.studio} /><StudioPhoto /></div>
     <section className="owner-metrics" aria-label="Studio overview">{metrics.map(({ label, icon: Icon, color, value }) => <div className="owner-metric" key={label}><span className={`owner-metric-icon owner-metric-icon-${color}`}><Icon size={22} /></span><div><span className="owner-metric-value">{value}</span><span className="owner-metric-label">{label}</span></div></div>)}</section>
     <section className="account-card"><h2>Subscription</h2>
       {!data && !error && <p role="status">Loading subscription…</p>}

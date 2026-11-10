@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Bell, CalendarDays, ClipboardList, Compass, CreditCard, Heart, House, LogOut, Menu, UserRound, Settings, X } from "lucide-react";
+import { Camera, Bell, CalendarDays, ClipboardList, Compass, CreditCard, Heart, House, LogOut, Menu, UserRound, Settings, X } from "lucide-react";
 import FrameoraLogo from "../common/FrameoraLogo";
 
 const upcomingItems = [
@@ -32,6 +32,7 @@ export default function Sidebar() {
           <NavLink className={({ isActive }) => `user-dashboard-nav-item${isActive ? " is-active" : ""}`} to="/user/subscription" onClick={() => setExpanded(false)}>
             <CreditCard size={20} aria-hidden="true" /><span>Plans</span>
           </NavLink>
+          <NavLink className="user-dashboard-nav-item" to="/user/live-pose" onClick={() => setExpanded(false)}><Camera size={20} aria-hidden="true" /><span>Live Pose Guide</span></NavLink>
           {upcomingItems.map(({ label, icon: Icon }) => label === "My Plans" ? (
             <NavLink key={label} to="/user/plans" className={({ isActive }) => `user-dashboard-nav-item${isActive ? " is-active" : ""}`} onClick={() => setExpanded(false)}>
               <Icon size={20} aria-hidden="true" /><span>{label}</span>

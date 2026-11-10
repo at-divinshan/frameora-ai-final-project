@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getProject } from "../../services/projectService";
+import RevisionInstructions from "../../components/ai/RevisionInstructions";
 import OwnerCustomization from "../../components/ai/OwnerCustomization";
 import { normalizeOwnerPreferences, validateOwnerPreferences, DEFAULT_OWNER_PREFERENCES } from "../../config/ownerPreferences";
 import AccountLayout from "../../components/layout/AccountLayout";
@@ -536,6 +537,8 @@ export default function OwnerAIGenerator({ photoshoot } = {}) {
               {preferenceEntries(selectedPlan.preferences).map(([key, label, value]) => <div key={key}><dt>{label}</dt><dd>{value}</dd></div>)}
             </dl>
           </section>}
+          {!photoshoot && searchParams.get('feedback') && <RevisionInstructions projectId={searchParams.get('project')} planId={planId} feedbackId={searchParams.get('feedback')} disabled={retrying || busy} onUse={text => { setDescription(text); setReviewing(false); }} />}
+          {!photoshoot && (searchParams.get('feedback') || description) && <label htmlFor="revision-instructions">Revision instructions<textarea id="revision-instructions" value={description} maxLength={2000} disabled={retrying || busy} onChange={event => { setDescription(event.target.value); setReviewing(false); }} /></label>}
           <details open={!photoshoot}><summary>Image customization</summary>
           <OwnerCustomization values={preferences} errors={preferenceErrors} disabled={retrying}
             onChange={event => {

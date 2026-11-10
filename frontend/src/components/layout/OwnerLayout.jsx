@@ -12,6 +12,7 @@ import useTheme from "../../hooks/useTheme";
 import "../../styles/dashboard.css";
 
 const navigation = [
+  { label: "Live Pose Guide", icon: Camera, path: "/owner/live-pose" },
   { label: "Photoshoots", icon: FolderOpen, path: "/owner/projects" },
   { label: "AI Image Generation", icon: Images, path: "/owner/ai/generate" },
   { label: "AI Gallery", icon: Images, path: "/owner/ai/gallery" },

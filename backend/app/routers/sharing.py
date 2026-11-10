@@ -76,10 +76,10 @@ def shared_image(
 ):
     return Response(
         share_service.read_shared_image(db, user, token, asset_id),
-        media_type="image/png",
+        media_type="image/jpeg",
         headers={
             "Cache-Control": "private, no-store",
             "X-Content-Type-Options": "nosniff",
-            "Content-Disposition": 'inline; filename="frameora.png"',
+            "Content-Disposition": 'inline; filename="frameora-preview.jpg"',
         },
     )

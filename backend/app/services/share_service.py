@@ -211,6 +211,8 @@ def _active_share(db: Session, token: str, now: datetime):
     if owner is None:
         raise HTTPException(404, "Share link not found.")
     _sync_owner_limit(db, owner, now)
+    db.refresh(link, with_for_update=True)
+    db.refresh(project, with_for_update=True)
     if (
         not link.is_active
         or project.deleted_at is not None
@@ -259,6 +261,7 @@ def read_shared_image(db: Session, user: User, token: str, asset_id: int) -> byt
     finally:
         db.rollback()
     try:
-        return ai_image_storage.read_image(key)
+        from app.services.shared_preview import preview_bytes
+        return preview_bytes(ai_image_storage.read_image(key))
     except OSError:
         raise HTTPException(404, "Shared image not found.") from None

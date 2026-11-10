@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getGeneratedImage } from "../../services/aiService";
 
-export default function GeneratedImageCard({ image, index, loadImage = getGeneratedImage, enablePreview = false }) {
+export default function GeneratedImageCard({ image, index, loadImage = getGeneratedImage, enablePreview = false, allowDownload = true }) {
   const preview = useRef(null);
   const [url, setUrl] = useState("");
   const [error, setError] = useState(false);
@@ -49,7 +49,7 @@ export default function GeneratedImageCard({ image, index, loadImage = getGenera
         </>}
         <p className="ai-note">Planned photography guidance used for generation. The image has not been visually verified.</p>
       </> : <p className="ai-note">Photography guidance was not saved for this older image.</p>}
-      {url && <a className="user-dashboard-create-button ai-download" href={url} download={`frameora-${image.id}.png`}>Download Image</a>}
+      {url && allowDownload && <a className="user-dashboard-create-button ai-download" href={url} download={`frameora-${image.id}.png`}>Download Image</a>}
     </figcaption>
   </figure>;
 }

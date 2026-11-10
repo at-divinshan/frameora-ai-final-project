@@ -10,7 +10,7 @@ const directory = await mkdtemp(path.join(tmpdir(), 'frameora-account-'));
 const source = `
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, Outlet } from 'react-router-dom';
 import assert from 'node:assert/strict';
 import { validateProfile, validatePicture } from './src/utils/profile';
 import api from './src/services/api';
@@ -27,7 +27,7 @@ import AdminLayout from './src/components/layout/AdminLayout';
 import { OwnerFacts, AdminMetrics, onboardingLabel } from './src/pages/admin/Dashboard';
 import { getAdminOwners } from './src/services/adminService';
 import { PlanCards } from './src/pages/owner/Subscription';
-import { StudioDetails } from './src/pages/owner/Dashboard';
+import OwnerDashboard from './src/pages/owner/Dashboard';
 import { watchSubscriptionRefresh, activationDisabled, activationConfirmed, validateStudioPhoto, utcDate, ownerError } from './src/utils/subscription';
 import { activatePlan, uploadStudioPhoto } from './src/services/ownerService';
 export function lockedHero() {
@@ -121,9 +121,16 @@ export function planRendering() {
  assert.ok(used.includes('lifetime trial has already been used'));
 }
 export function studioRendering() {
- const html=renderToStaticMarkup(<MemoryRouter><StudioDetails studio={{studio_name:'Real Studio',studio_phone:'0771234567',studio_address:'10 Road',studio_city:'Jaffna',studio_description:'Photography'}} /></MemoryRouter>);
- for(const text of ['Real Studio','0771234567','10 Road','Jaffna','Photography']) assert.ok(html.includes(text));
- assert.ok(renderToStaticMarkup(<MemoryRouter><StudioDetails studio={null} /></MemoryRouter>).includes('unavailable'));
+ const previousStorage=globalThis.localStorage;
+ for(const theme of ['dark','light']) {
+ globalThis.localStorage={getItem:()=>theme};
+ const studio={studio_name:'Real Studio',studio_phone:'0771234567',studio_address:'10 Road',studio_city:'Jaffna',studio_description:'Private description'};
+ const html=renderToStaticMarkup(<AuthContext.Provider value={{user:{name:'Owner Name',role:'owner'}}}><ThemeProvider><MemoryRouter><Routes><Route element={<Outlet context={{onboarding:{studio}}} />}><Route path="/" element={<OwnerDashboard />} /></Route></Routes></MemoryRouter></ThemeProvider></AuthContext.Provider>);
+ for(const text of ['Real Studio','Owner Name','Credits Left','Active Projects','Active Share Links','Subscription','Generate Images']) assert.ok(html.includes(text),text);
+ for(const text of ['0771234567','10 Road','Jaffna','Private description','Studio phone','Upload studio photo']) assert.ok(!html.includes(text),text);
+ assert.ok(html.includes('/owner/studio-setup'));
+ }
+ if(previousStorage === undefined) delete globalThis.localStorage; else globalThis.localStorage=previousStorage;
 }
 export async function activationRequests() {
  const sent=[]; api.defaults.adapter=async config=>{sent.push(config);return {data:{plan:'basic'},status:200,headers:{},config};};

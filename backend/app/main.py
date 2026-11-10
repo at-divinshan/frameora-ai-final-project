@@ -12,8 +12,11 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.ai_generation import AIGeneration
 from app.middleware.ai_upload_limit import AIUploadLimit
+from app.middleware.live_pose_limit import LivePoseUploadLimit
 from app.core.config import settings
 from app.database.connection import check_database_connection, engine
+from app.routers.feedback import router as feedback_router
+from app.routers.live_pose import router as live_pose_router
 from app.routers.auth import router as auth_router
 from app.routers.admin import router as admin_router
 from app.routers.google_auth import router as google_auth_router
@@ -56,7 +59,7 @@ app = FastAPI(title="Frameora AI", lifespan=lifespan)
 @app.middleware("http")
 async def picture_response_protection(request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith(("/ai/", "/owner/ai/", "/owner/entitlements")):
+    if request.url.path.startswith(("/ai/", "/owner/ai/", "/owner/entitlements", "/live-pose/")):
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
     if request.url.path.startswith("/users/") and request.url.path.rstrip("/").endswith("/picture"):
@@ -84,6 +87,7 @@ async def google_response_protection(request, call_next):
 
 
 app.add_middleware(AIUploadLimit)
+app.add_middleware(LivePoseUploadLimit)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(dict.fromkeys((*settings.cors_origins, *(
@@ -93,6 +97,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+app.include_router(feedback_router)
+app.include_router(live_pose_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(google_auth_router)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import AccountLayout from '../../components/layout/AccountLayout';
+import ProjectFeedback from '../../components/projects/ProjectFeedback';
 import ProjectWorkspace from '../../components/projects/ProjectWorkspace';
 import ProjectForm, { projectFields } from '../../components/projects/ProjectForm';
 import { getProject, updateProject, projectError } from '../../services/projectService';
@@ -50,5 +51,6 @@ export default function ProjectDetails() {
           {project.is_editable && <button className="owner-gradient-button" onClick={() => { setEditing(true); setSuccess(''); }}>Edit Details</button>}</>}
     </div>}
     {project && <ProjectWorkspace key={project.id} project={project} onRestriction={() => getProject(projectId).then(setProject).catch(() => setProject(current => current ? { ...current, is_editable: false } : current))} />}
+    {project && <ProjectFeedback key={`feedback-${project.id}`} projectId={project.id} />}
   </section></AccountLayout>;
 }

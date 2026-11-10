@@ -1,3 +1,4 @@
+import LivePoseGuide from "../pages/shared/LivePoseGuide";
 import SharedGallery from "../pages/shared/SharedGallery";
 import { shareReturnFromSearch } from "../utils/shareReturn";
 import AIGenerator from "../pages/user/AIGenerator";
@@ -81,6 +82,7 @@ export default function AppRoutes() {
           <Route key={role} element={<RoleRoute role={role} />}>
             {role === "owner" ? (
               <Route element={<OwnerOnboardingRoute />}>
+                <Route path="/owner/live-pose" element={<LivePoseGuide />} />
                 <Route path="/owner/projects" element={<Projects />} />
                 <Route path="/owner/projects/create" element={<CreateProject />} />
                 <Route path="/owner/projects/:projectId" element={<ProjectDetails />} />
@@ -100,6 +102,7 @@ export default function AppRoutes() {
                 <Route path={path} element={role === "user" ? <UserDashboard /> : <AdminDashboard />} />
                 {role === "user" && (
                   <>
+                    <Route path="/user/live-pose" element={<LivePoseGuide />} />
                     <Route path="/user/ai" element={<AIGenerator />} />
                     <Route path="/user/gallery" element={<AIResults />} />
                     <Route path="/user/plans/create" element={<CreatePlan />} />

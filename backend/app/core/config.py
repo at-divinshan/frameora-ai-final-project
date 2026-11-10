@@ -32,6 +32,7 @@ class Settings:
     password_management_enabled: bool = False
     profile_image_dir: str = str(Path(__file__).resolve().parents[2] / "private" / "profile-pictures")
 
+    live_pose_vision_enabled: bool = False
     pollinations_enabled: bool = False
     pollinations_api_key: str = field(default="", repr=False)
     pollinations_image_model: str = "openai/gpt-image-1-mini"
@@ -110,6 +111,7 @@ def load_settings() -> Settings:
         oauth_cookie_secure=optional("OAUTH_COOKIE_SECURE", "true").lower() != "false",
         auth_version_enabled=optional("AUTH_VERSION_ENABLED", "false").lower() == "true",
         password_management_enabled=optional("PASSWORD_MANAGEMENT_ENABLED", "false").lower() == "true",
+        live_pose_vision_enabled=optional("LIVE_POSE_VISION_ENABLED", "false").lower() == "true",
         pollinations_enabled=optional("POLLINATIONS_ENABLED", "false").lower() == "true",
         pollinations_api_key=optional("POLLINATIONS_API_KEY", ""),
         pollinations_image_model=optional("POLLINATIONS_IMAGE_MODEL", Settings.pollinations_image_model),

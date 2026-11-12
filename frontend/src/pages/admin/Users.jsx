@@ -1,0 +1,32 @@
+import { useEffect, useRef, useState } from 'react';
+import UserBillingDetails from '../../components/admin/UserBillingDetails';
+import AdminLayout from '../../components/layout/AdminLayout';
+import { getAdminUsers, getAdminUser, setAdminUserStatus, adminUserError } from '../../services/adminUserService';
+import '../../styles/account.css';
+
+export function AccountSummary({user}) {
+  return <dl className="account-details"><div><dt>Name</dt><dd>{user.name}</dd></div><div><dt>Email</dt><dd>{user.email}</dd></div><div><dt>Role</dt><dd>{user.role === 'owner' ? 'Studio Owner' : 'Normal User'}</dd></div><div><dt>Registered</dt><dd>{new Date(user.created_at.endsWith('Z') ? user.created_at : `${user.created_at}Z`).toLocaleString()}</dd></div><div><dt>Status</dt><dd>{user.is_active ? 'Active' : 'Deactivated'}</dd></div></dl>;
+}
+export default function Users(){
+ const [q,setQ]=useState(''),[role,setRole]=useState(''),[status,setStatus]=useState(''),[page,setPage]=useState(1),[revision,setRevision]=useState(0);
+ const [data,setData]=useState(null),[error,setError]=useState(''),[success,setSuccess]=useState(''),[busy,setBusy]=useState(false);
+ const [selected,setSelected]=useState(null),[detail,setDetail]=useState(null),[detailError,setDetailError]=useState(''),[confirm,setConfirm]=useState(null);
+ const [paymentPage,setPaymentPage]=useState(1);
+ const dialog=useRef(null);
+ useEffect(()=>{const c=new AbortController();setData(null);setError('');getAdminUsers({q,role:role||undefined,status:status||undefined,page},c.signal).then(d=>{if(!c.signal.aborted)setData(d);}).catch(e=>{if(!c.signal.aborted)setError(adminUserError(e));});return()=>c.abort();},[q,role,status,page,revision]);
+ useEffect(()=>{const c=new AbortController();setDetail(null);setDetailError('');if(selected)getAdminUser(selected,c.signal,paymentPage).then(d=>{if(!c.signal.aborted)setDetail(d);}).catch(e=>{if(!c.signal.aborted)setDetailError(adminUserError(e));});return()=>c.abort();},[selected,revision,paymentPage]);
+ useEffect(()=>{if(confirm)dialog.current?.showModal();else dialog.current?.close();},[confirm]);
+ async function change(user,active){if(busy)return;setBusy(true);setError('');setSuccess('');try{
+   const saved=await setAdminUserStatus(user.id,active,user.status_version);
+   setData(current=>{if(!current)return current;const visible=!status||(status==='active')===saved.is_active;return {...current,items:current.items.flatMap(row=>row.id===saved.id?(visible?[saved]:[]):[row]),total:current.total-(visible?0:1)};});
+   setDetail(current=>current?.id===saved.id?{...current,...saved}:current);setSuccess(`${saved.name} ${active?'activated':'deactivated'} successfully.`);setConfirm(null);
+ }catch(e){setError(adminUserError(e));setConfirm(null);if(e.response?.status===409)setRevision(n=>n+1);}finally{setBusy(false);}}
+ return <AdminLayout title="User Management"><section className="account-page admin-users-page"><header className="account-heading"><div><h1>Users</h1><p>Manage Normal Users and Studio Owners.</p></div><button className="account-secondary" disabled={busy} onClick={()=>setRevision(n=>n+1)}>Refresh</button></header>
+ <div className="account-card account-grid"><label>Search name or email<input className="form-input" type="search" maxLength={100} value={q} onChange={e=>{setQ(e.target.value);setPage(1);}} /></label><label>Role<select value={role} onChange={e=>{setRole(e.target.value);setPage(1);}}><option value="">All roles</option><option value="user">Normal User</option><option value="owner">Studio Owner</option></select></label><label>Status<select value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}}><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Deactivated</option></select></label></div>
+ {error&&<p className="account-error" role="alert">{error}</p>}{success&&<p className="account-notice" role="status">{success}</p>}{!data&&!error&&<p role="status">Loading users…</p>}{data?.items.length===0&&<p>No matching users.</p>}
+ <div className="account-grid">{data?.items.map(user=><article className="account-card" key={user.id}><AccountSummary user={user}/><button className="account-secondary" disabled={busy} onClick={()=>{setPaymentPage(1);setSelected(user.id);}}>View Details</button><button className="gradient-button" disabled={busy} onClick={()=>user.is_active?setConfirm(user):change(user,true)}>{user.is_active?'Deactivate':'Activate'}</button></article>)}</div>
+ {data&&<div><p>{data.total} accounts · Page {page}</p><button className="account-secondary" disabled={page===1||busy} onClick={()=>setPage(n=>n-1)}>Previous</button><button className="account-secondary" disabled={page*data.page_size>=data.total||busy} onClick={()=>setPage(n=>n+1)}>Next</button></div>}
+ {selected&&<section className="account-card" aria-label="Account details"><button className="account-secondary" onClick={()=>setSelected(null)}>Close details</button>{detailError&&<p role="alert">{detailError}</p>}{!detail&&!detailError&&<p role="status">Loading details…</p>}{detail&&<><h2>Account details</h2><AccountSummary user={detail}/><p>Phone: {detail.phone||'Not provided'}</p><p>Email verified: {detail.is_verified?'Yes':'No'}</p>{detail.studio&&<><h3>Studio information</h3><dl className="account-details">{Object.entries(detail.studio).map(([key,value])=><div key={key}><dt>{key.replaceAll('_',' ')}</dt><dd>{value||'Not provided'}</dd></div>)}</dl></>}<UserBillingDetails subscription={detail.subscription} payments={detail.payments} onPaymentPage={setPaymentPage}/><h3>Recent status changes</h3>{detail.status_history.length?detail.status_history.map(item=><p key={item.version}>{item.is_active?'Activated':'Deactivated'} by Admin #{item.actor_id} · {item.changed_at} UTC</p>):<p>No recorded status changes.</p>}</>}</section>}
+ <dialog ref={dialog} className="account-status-dialog" aria-labelledby="deactivate-title" onCancel={e=>{if(busy)e.preventDefault();else setConfirm(null);}}><h2 id="deactivate-title">Deactivate account?</h2><p>{confirm?.name} will lose access and must sign in again after reactivation. Their data and balances will be retained.</p><button className="account-secondary" disabled={busy} onClick={()=>setConfirm(null)}>Cancel</button><button className="gradient-button" disabled={busy} onClick={()=>confirm&&change(confirm,false)}>{busy?'Saving…':'Confirm Deactivation'}</button></dialog>
+ </section></AdminLayout>;
+}

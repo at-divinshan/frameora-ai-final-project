@@ -1,4 +1,5 @@
-import { Bell, Moon, Search, Sun } from "lucide-react";
+import { Moon, Search, Sun } from "lucide-react";
+import NotificationBell from "../common/NotificationBell";
 import useAuth from "../../hooks/useAuth";
 import useTheme from "../../hooks/useTheme";
 import { Link } from "react-router-dom";
@@ -14,9 +15,7 @@ export default function Navbar() {
         <input type="search" aria-label="Search photos, studios, styles — coming soon" placeholder="Search photos, studios, styles..." disabled />
       </div>
       <div className="user-dashboard-account-controls">
-        <button className="user-dashboard-icon-button" type="button" disabled aria-label="Notifications — coming soon" title="Notifications — coming soon">
-          <Bell size={21} aria-hidden="true" />
-        </button>
+        <NotificationBell className="user-dashboard-icon-button" />
         <Link className="user-dashboard-account account-profile-link" to="/user/profile" aria-label="Open your profile">
           <AccountAvatar className="user-dashboard-avatar" />
           <div className="user-dashboard-account-copy">

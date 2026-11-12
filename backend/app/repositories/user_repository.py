@@ -19,6 +19,8 @@ def lock_profile(db: Session, user_id: int) -> User | None:
     user = db.get(User, user_id, populate_existing=True, with_for_update=True)
     if user is not None:
         check_authenticated_snapshot(db, user)
+        from app.core.account_state import require_active
+        require_active(db,user,getattr(user,"_account_version",None))
     return user
 
 

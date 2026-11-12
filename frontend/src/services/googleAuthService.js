@@ -29,6 +29,7 @@ export function markGoogleRegistration() {
 }
 
 export function googleErrorMessage(error) {
+  if (error.response?.status === 401 && error.response.data?.detail === "This account has been deactivated. Contact the administrator.") return error.response.data.detail;
   switch (error.response?.status) {
     case 401: return "Unable to verify your account. Check your password or sign in again.";
     case 403: return "Google sign-in is not available for this account or browser origin.";

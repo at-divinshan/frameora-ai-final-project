@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import AccountAvatar from "../common/AccountAvatar";
 import FrameoraLogo from "../common/FrameoraLogo";
+import NotificationBell from "../common/NotificationBell";
 import useAuth from "../../hooks/useAuth";
 import useTheme from "../../hooks/useTheme";
 import "../../styles/dashboard.css";
@@ -17,10 +18,9 @@ const navigation = [
   { label: "AI Image Generation", icon: Images, path: "/owner/ai/generate" },
   { label: "AI Gallery", icon: Images, path: "/owner/ai/gallery" },
   { label: "Previous Account Data", icon: ClipboardList, path: "/owner/account-history" },
-  { label: "Equipment", icon: Camera },
   { label: "Share Links", icon: Link2 },
   { label: "Subscription", icon: CreditCard, path: "/owner/subscription" },
-  { label: "Notifications", icon: Bell },
+  { label: "Notifications", icon: Bell, path: "/owner/notifications" },
   { label: "Studio Profile", icon: Camera, path: "/owner/studio-setup" },
   { label: "Profile", icon: UserRound, path: "/owner/profile" },
   { label: "Settings", icon: Settings, path: "/owner/settings" },
@@ -76,7 +76,7 @@ export default function OwnerLayout({ children }) {
             <input type="search" placeholder="Search customers, projects..." aria-label="Search customers and projects — coming soon" disabled />
           </div>
           <div className="owner-navbar-controls">
-            <button className="owner-icon-button" type="button" disabled title="Notifications — coming soon" aria-label="Notifications — coming soon"><Bell size={20} aria-hidden="true" /></button>
+            <NotificationBell className="owner-icon-button" />
             <Link className="owner-account account-profile-link" to="/owner/profile" aria-label="Open your profile">
               <AccountAvatar className="owner-avatar" />
               <div><strong title={user?.name}>{user?.name}</strong><span>Studio Owner</span></div>

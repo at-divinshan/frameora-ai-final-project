@@ -89,6 +89,12 @@ def issue_session(db: Session, user: User, remember_me: bool) -> TokenResponse:
     """Shared session format; roles remain authoritative in the database."""
     if user.role not in SUPPORTED_ROLES:
         raise HTTPException(status_code=401, detail="Unable to authenticate.")
+    # Session issuance can follow a legitimate auth-version increment (role upgrade).
+    user = db.get(User,user.id,populate_existing=True,with_for_update=True)
+    if user is None or user.role not in SUPPORTED_ROLES:
+        raise HTTPException(401,"Unable to authenticate.")
+    from app.core.account_state import require_active
+    account_version = require_active(db,user,getattr(user,"_account_version",None))
     require_single_admin(db, user)
-    token, expires_in = create_access_token(str(user.id), remember_me, current_version(db, user.id, lock=True))
+    token, expires_in = create_access_token(str(user.id), remember_me, current_version(db, user.id, lock=True), account_version=account_version)
     return TokenResponse(access_token=token, expires_in=expires_in, user=public_user(user))

@@ -12,6 +12,21 @@ from stage4_support import IsolatedStage4
 class GoogleFlowTests(IsolatedStage4):
     enabled = False
 
+    def test_inactive_callback_returns_safe_explicit_error(self):
+        from sqlalchemy.orm import Session
+        from app.models.account_status import AccountStatus, AccountStatusAudit
+        from app.models.user import User
+        from app.services.admin_users_service import change
+        from app.schemas.admin_users import StatusChange
+        for model in (AccountStatus, AccountStatusAudit):
+            model.__table__.create(self.engine)
+        query = self.start()
+        with Session(self.engine) as db:
+            change(db, db.get(User, 3), 4, StatusChange(is_active=False, expected_version=0))
+        response = self.callback(query)
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers['location'], self.settings.google_completion_url + '#google-inactive')
+
     def start(self):
         response = self.client.post('/auth/google/start', json={'remember_me': False},
                                     headers={'Origin': self.settings.frontend_origin})

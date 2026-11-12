@@ -33,16 +33,18 @@ try {
     FreeRequestExhaustedNotice, upgradeUserToOwner,
   } = await import(pathToFileURL(outfile));
   assert.deepEqual(USER_SUBSCRIPTION_PLANS, [
-    { name: "Starter", price: 1, credits: 20 },
-    { name: "Plus", price: 2, credits: 50 },
-    { name: "Premium", price: 3, credits: 100 },
+    { code: "free", name: "Free", currency: "LKR", price: 0, credits: 10 },
+    { code: "starter", name: "Starter", currency: "LKR", price: 490, credits: 40 },
+    { code: "pro", name: "Pro", currency: "LKR", price: 990, credits: 100 },
   ]);
   const plans = renderToStaticMarkup(React.createElement(SubscriptionPlanCards));
-  for (const name of ["Starter", "Plus", "Premium", "$1", "$2", "$3", "20 AI credits", "50 AI credits", "100 AI credits"]) {
-    assert.ok(plans.includes(name), `Missing plan detail: ${name}`);
+  for (const detail of ["Free", "Starter", "Pro", "LKR 0", "LKR 490", "LKR 990", "10 AI credits", "40 AI credits", "100 AI credits"]) {
+    assert.ok(plans.includes(detail), `Missing plan detail: ${detail}`);
   }
   assert.equal((plans.match(/disabled=""/g) || []).length, 3);
-  assert.equal((plans.match(/Subscribe — checkout unavailable/g) || []).length, 3);
+  assert.equal((plans.match(/Payment setup pending/g) || []).length, 2);
+  assert.ok(plans.includes('Monthly allowance pending'));
+  assert.doesNotMatch(plans, /Premium|Plus|\$[123]/);
   const exhausted = renderToStaticMarkup(
     React.createElement(MemoryRouter, null, React.createElement(FreeRequestExhaustedNotice)),
   );

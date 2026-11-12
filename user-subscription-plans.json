@@ -1,0 +1,5 @@
+[
+  { "code": "free", "name": "Free", "currency": "LKR", "price": 0, "credits": 10 },
+  { "code": "starter", "name": "Starter", "currency": "LKR", "price": 490, "credits": 40 },
+  { "code": "pro", "name": "Pro", "currency": "LKR", "price": 990, "credits": 100 }
+]

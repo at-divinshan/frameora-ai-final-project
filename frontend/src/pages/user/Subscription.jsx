@@ -10,10 +10,10 @@ export function SubscriptionPlanCards() {
   return USER_SUBSCRIPTION_PLANS.map((plan) => (
     <article className="account-card user-subscription-card" key={plan.name}>
       <h2>{plan.name}</h2>
-      <p className="studio-plan-price">${plan.price}<span> / month</span></p>
+      <p className="studio-plan-price">{plan.currency} {plan.price}<span> / month</span></p>
       <p>{plan.credits} AI credits each month</p>
       <button className="user-dashboard-create-button" type="button" disabled>
-        Subscribe — checkout unavailable
+        {plan.code === 'free' ? 'Monthly allowance pending' : 'Coming Soon — Payment setup pending'}
       </button>
     </article>
   ));
@@ -68,10 +68,10 @@ export default function Subscription() {
         <header className="account-heading">
           <div>
             <h1>Subscription Plans</h1>
-            <p>Choose an option for your account. Normal User plans below are provisional placeholders only.</p>
+            <p>Approved Normal User plans. Choose the option that fits your photography needs.</p>
           </div>
         </header>
-        <p className="user-plan-message" role="note">Provisional pricing — these sample plans are not real purchasable subscriptions. Checkout remains disabled until verified payment integration is available.</p>
+        <p className="user-plan-message" role="note">Monthly credit allowances are not active yet. Your existing one-time free generation request remains unchanged. Starter and Pro activation will be available only after verified payment integration.</p>
         <div className="user-subscription-grid">
           <SubscriptionPlanCards />
           <StudioOwnerUpgradeCard onUpgrade={upgrade} busy={busy} error={error} />

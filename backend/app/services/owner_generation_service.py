@@ -323,6 +323,10 @@ def generate(db, user, *, plan_id, description, reference, idempotency_key,
         generation.status = SUCCESS
         generation.completed_at = subscriptions.clock()
         db.flush()
+        from app.services import notification_service
+        if notification_service.available(db):
+            _, notification_state = entitlements.resolve_locked(db, user, now=subscriptions.clock())
+            notification_service.owner_state(db, user, notification_state)
         commit_attempted = True
         db.commit()  # All batch rows, metadata and success status become visible together.
         _log_generation_diagnostic(

@@ -56,7 +56,7 @@ def require_password_management():
         raise HTTPException(503, "Password management is not enabled.")
 
 
-def create_access_token(user_id: str, remember_me: bool, auth_version: int | None = None) -> tuple[str, int]:
+def create_access_token(user_id: str, remember_me: bool, auth_version: int | None = None, account_version: int | None = None) -> tuple[str, int]:
     secret = require_jwt_configuration()
     now = datetime.now(timezone.utc)
     lifetime = (
@@ -68,6 +68,8 @@ def create_access_token(user_id: str, remember_me: bool, auth_version: int | Non
             "sub": str(user_id), "iat": now, "nbf": now, "exp": now + lifetime,
             "iss": JWT_ISSUER, "aud": JWT_AUDIENCE, "type": "access",
         }
+    if account_version is not None:
+        claims["account_version"] = account_version
     if auth_versions_enabled():
         if type(auth_version) is not int or not 0 <= auth_version <= 2**64 - 1:
             raise HTTPException(503, "Authentication is unavailable.")

@@ -1,3 +1,5 @@
+import AdminUsers from "../pages/admin/Users";
+import Notifications from "../pages/shared/Notifications";
 import LivePoseGuide from "../pages/shared/LivePoseGuide";
 import SharedGallery from "../pages/shared/SharedGallery";
 import { shareReturnFromSearch } from "../utils/shareReturn";
@@ -82,6 +84,7 @@ export default function AppRoutes() {
           <Route key={role} element={<RoleRoute role={role} />}>
             {role === "owner" ? (
               <Route element={<OwnerOnboardingRoute />}>
+                <Route path="/owner/notifications" element={<Notifications />} />
                 <Route path="/owner/live-pose" element={<LivePoseGuide />} />
                 <Route path="/owner/projects" element={<Projects />} />
                 <Route path="/owner/projects/create" element={<CreateProject />} />
@@ -97,11 +100,13 @@ export default function AppRoutes() {
               </Route>
             ) : (
               <>
+                {role === "admin" && <Route path="/admin/users" element={<AdminUsers />} />}
                 <Route path={`/${role}/profile`} element={role === "user" ? <UserProfile /> : <AdminProfile />} />
                 <Route path={`/${role}/settings`} element={role === "user" ? <UserSettings /> : <AdminSettings />} />
                 <Route path={path} element={role === "user" ? <UserDashboard /> : <AdminDashboard />} />
                 {role === "user" && (
                   <>
+                    <Route path="/user/notifications" element={<Notifications />} />
                     <Route path="/user/live-pose" element={<LivePoseGuide />} />
                     <Route path="/user/ai" element={<AIGenerator />} />
                     <Route path="/user/gallery" element={<AIResults />} />

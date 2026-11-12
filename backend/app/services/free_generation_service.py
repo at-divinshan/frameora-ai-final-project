@@ -317,10 +317,10 @@ def release_failed_request(
     reservation: FreeGenerationReservation,
 ) -> None:
     """Release a failed attempt without consuming the account's free allowance."""
-    _require_normal_user(user)
     _require_schema(db)
     try:
-        current = _locked_user(db, user)
+        current = db.get(User,user.id,populate_existing=True,with_for_update=True)
+        if current is None: raise HTTPException(404,"Account not found.")
         allowance = _allowance(db, current.id, lock=True)
         if not _matches_reservation(allowance, reservation):
             db.rollback()

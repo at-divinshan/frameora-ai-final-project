@@ -28,7 +28,7 @@ export default function ProjectFeedback({ projectId }) {
     {!rows && !error && <p role="status">Loading feedback…</p>}{rows?.length === 0 && <p>No feedback yet.</p>}
     {ids.map(id => <section className="feedback-image-group" key={id} aria-label={`Feedback for image ${id}`}>
       <GeneratedImageCard image={images.find(image => image.id === id) || { id }} index={id - 1} loadImage={getOwnerGeneratedImage} enablePreview />
-      <div>{rows.filter(row => row.asset_id === id).map(row => <article className="image-feedback" key={row.id}>
+      <div>{rows.filter(row => row.asset_id === id).map(row => <article className="image-feedback" id={`feedback-${row.id}`} key={row.id}>
         <strong>{row.author_name}</strong> <time dateTime={row.created_at}>{new Date(row.created_at).toLocaleString()}</time>
         <p className="feedback-text">{row.comment}</p>
         <label>Status<select value={row.status} disabled={busy} onChange={e => save(row.id, { status: e.target.value })}>

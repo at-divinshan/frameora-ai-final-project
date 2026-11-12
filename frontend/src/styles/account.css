@@ -149,3 +149,8 @@
 .owner-image-dialog::backdrop { background: #020711d9; }
 .owner-image-dialog img { max-height: 78vh; max-width: 100%; width: auto; object-fit: contain; margin: 12px auto 0; }
 @media (max-width: 640px) { .photoshoot-actions { flex-direction: column; align-items: stretch; } .photoshoot-actions > * { width: 100%; text-align: center; } .photoshoot-steps { gap: 12px 28px; font-size: 13px; } }
+
+.account-status-dialog{max-width:min(480px,90vw);padding:24px;border-radius:18px;border:1px solid var(--account-border);background:var(--account-panel);color:var(--account-text)}
+.account-status-dialog::backdrop{background:#0008}
+
+.admin-users-page .form-input{display:block;width:100%;padding:12px;border:1px solid var(--account-border);border-radius:10px;background:var(--account-input);color:var(--account-text);font:inherit}

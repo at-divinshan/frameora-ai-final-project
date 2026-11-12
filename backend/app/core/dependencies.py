@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.security import decode_access_token
 from app.core.security import auth_versions_enabled, decode_access_claims
 from app.core.auth_version import check_version
+from app.core import account_state
 from app.database.connection import get_db
 from app.models.user import User
 from app.repositories.user_repository import find_by_id
@@ -27,7 +28,8 @@ def get_current_user(
     )
     if credentials is None:
         raise unauthorized
-    claims = decode_access_claims(credentials.credentials) if auth_versions_enabled() else None
+    account_checks = account_state.enabled(db)
+    claims = decode_access_claims(credentials.credentials) if auth_versions_enabled() or account_checks else None
     subject = claims["sub"] if claims is not None else decode_access_token(credentials.credentials)
     if not subject.isascii() or not subject.isdecimal() or len(subject) > 10:
         raise unauthorized
@@ -37,8 +39,11 @@ def get_current_user(
     user = find_by_id(db, user_id)
     if user is None or user.role not in SUPPORTED_ROLES:
         raise unauthorized
+    if account_checks:
+        user = db.get(User, user_id, populate_existing=True, with_for_update=True)
+        user._account_version = account_state.require_active(db, user, claims.get("account_version", 0))
     require_single_admin(db, user)
-    if claims is not None:
+    if auth_versions_enabled():
         check_version(db, user, claims["auth_version"])
         user._authenticated_version = claims["auth_version"]
     return user

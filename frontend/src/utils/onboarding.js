@@ -9,6 +9,7 @@ export function onboardingDestination(status, path) {
   if (status === 'pending_plan' && path === '/owner/studio-setup') return null;
   if (status === 'completed' && (
     [
+      '/owner/notifications',
       '/owner/live-pose',
       '/owner/profile',
       '/owner/settings',

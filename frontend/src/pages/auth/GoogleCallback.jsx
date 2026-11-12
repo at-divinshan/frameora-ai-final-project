@@ -9,6 +9,7 @@ import { clearGoogleFlow, completeGoogle, completeGoogleLink, googleErrorMessage
 import { dashboardRoute } from "../../utils/constants";
 
 const CALLBACK_ERRORS = {
+  "#google-inactive": "This account has been deactivated. Contact the administrator.",
   "#google-cancelled": "Google sign-in was cancelled. Your account has not been changed.",
   "#google-conflict": "This account cannot be registered or linked. Sign in to your existing account and link Google explicitly.",
   "#google-error": "Google sign-in failed or expired. Please start again.",

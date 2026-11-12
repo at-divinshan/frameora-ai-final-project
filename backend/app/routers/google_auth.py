@@ -96,7 +96,9 @@ def callback(request: Request, db: Session = Depends(get_db)):
         diagnostic_failure("callback_failed")
         # Only fixed UI markers cross this boundary, never provider data or exception text.
         marker = "google-error"
-        if isinstance(failure, HTTPException) and failure.status_code == 409:
+        if isinstance(failure, HTTPException) and (failure.headers or {}).get('X-Auth-Error') == 'ACCOUNT_INACTIVE':
+            marker = "google-inactive"
+        elif isinstance(failure, HTTPException) and failure.status_code == 409:
             marker = "google-conflict"
         elif isinstance(failure, HTTPException) and failure.status_code == 400 and params.get("error") == "access_denied":
             marker = "google-cancelled"

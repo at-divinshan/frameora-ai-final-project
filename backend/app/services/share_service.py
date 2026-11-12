@@ -140,6 +140,8 @@ def create_link(
             created_at=link.created_at,
             token=token,
         )
+        from app.services.notification_service import revision_shared
+        revision_shared(db, project_id, generation_id, link.id)
         db.commit()
         return result
     except Exception:
@@ -210,7 +212,13 @@ def _active_share(db: Session, token: str, now: datetime):
     owner = db.get(User, project.studio_owner_id)
     if owner is None:
         raise HTTPException(404, "Share link not found.")
-    _sync_owner_limit(db, owner, now)
+    try:
+        _sync_owner_limit(db, owner, now)
+    except HTTPException as error:
+        if error.status_code == 401:
+            # An unavailable studio does not invalidate the customer's own session.
+            raise HTTPException(404, "Share link not found.") from None
+        raise
     db.refresh(link, with_for_update=True)
     db.refresh(project, with_for_update=True)
     if (

@@ -51,3 +51,23 @@ class FeedbackRevisionTests(unittest.TestCase):
             self.assertEqual([im['id'] for im in gallery.json()['images']],[im['id'] for im in revised['images']])
             self.assertEqual(self.client.get(f"/sharing/{token}/images/{revised['images'][0]['id']}",headers=self.auth(1)).status_code,404)
             self.assertEqual(self.client.get(f"/owner/ai/images/{original['images'][0]['id']}",headers=self.headers).status_code,200)
+
+    def test_successful_generation_records_low_and_exhausted_events(self):
+        from app.models.app_notification import AppNotification
+        from sqlalchemy import select
+        from sqlalchemy.orm import Session
+        AppNotification.__table__.create(self.engine)
+        self.assertEqual(self.activate('basic').status_code,200)
+        with patch.object(entitlements,'BATCH_COST',2), patch('app.services.generation_planning.BATCH_SIZE',2):
+            self.mock.return_value=fixture.OWNER_IMAGES[:2]
+            for index in range(5):
+                response=self.generate_for_project(1,key=f'notification-credit-{index:04d}')
+                self.assertEqual(response.status_code,201,response.text)
+            with Session(self.engine) as db:
+                rows=list(db.scalars(select(AppNotification)))
+                self.assertEqual(len(rows),2)
+                self.assertTrue(all(row.user_id==2 for row in rows))
+                self.assertTrue(any('exhausted' in row.message for row in rows))
+            denied=self.generate_for_project(1,key='notification-credit-denied')
+            self.assertEqual(denied.status_code,402)
+            self.assertEqual(self.mock.call_count,5)

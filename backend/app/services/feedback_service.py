@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from app.models.image_feedback import ImageFeedback
 from app.models.media_asset import MediaAsset
 from app.models.user import User
-from app.services import share_service, project_service
+from app.services import share_service, project_service, notification_service as notifications
 
 
 def require_schema(db):
@@ -50,6 +50,7 @@ def customer_comments(db,user,token,asset_id,data=None):
                 row=ImageFeedback(project_id=project.id,asset_id=asset.id,share_link_id=link.id,
                     author_id=user.id,request_key=key,comment=data.comment,status='pending',created_at=now,updated_at=now)
                 db.add(row);db.flush();result=view(row,customer=True)
+                notifications.emit(db,project.studio_owner_id,f'comment:{row.id}',f'New customer feedback on image {asset.id}.',f'/owner/projects/{project.id}#feedback-{row.id}')
         else:
             # Same login-plus-valid-token model. Show only this author's comments,
             # never another customer's identity or unrelated owner feedback.
@@ -69,6 +70,7 @@ def owner_feedback(db,user,project_id,feedback_id=None,data=None):
         if data is not None:
             row=db.scalar(select(ImageFeedback).where(ImageFeedback.id==feedback_id,ImageFeedback.project_id==project_id).with_for_update())
             if row is None:raise HTTPException(404,"Feedback not found.")
+            old_status,old_revision=row.status,row.revised_asset_id
             if 'revised_asset_id' in data.model_fields_set:
                 if data.revised_asset_id is not None:
                     asset=db.scalar(select(MediaAsset).where(MediaAsset.id==data.revised_asset_id,
@@ -78,6 +80,7 @@ def owner_feedback(db,user,project_id,feedback_id=None,data=None):
                 row.revised_asset_id=data.revised_asset_id
             if data.status is not None:row.status=data.status
             row.updated_at=share_service._now();db.flush()
+            notifications.feedback_changed(db,row,old_status,old_revision)
         rows=db.execute(select(ImageFeedback,User.name,MediaAsset.plan_id).join(User,User.id==ImageFeedback.author_id)
             .join(MediaAsset,MediaAsset.id==ImageFeedback.asset_id).where(ImageFeedback.project_id==project_id)
             .order_by(ImageFeedback.asset_id,ImageFeedback.created_at,ImageFeedback.id))

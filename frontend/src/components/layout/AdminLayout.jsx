@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { BarChart3, Bell, Building2, CalendarDays, CreditCard, FolderOpen, House, LogOut, Menu, Moon, Plus, Search, Settings, Sun, Users, UserRound, X } from "lucide-react";
+import { BarChart3, Bell, Building2, CreditCard, FolderOpen, House, LogOut, Menu, Moon, Plus, Search, Settings, Sun, Users, UserRound, X } from "lucide-react";
 import AccountAvatar from "../common/AccountAvatar";
 import FrameoraLogo from "../common/FrameoraLogo";
 import useAuth from "../../hooks/useAuth";
@@ -8,10 +8,9 @@ import useTheme from "../../hooks/useTheme";
 import "../../styles/dashboard.css";
 
 const navigation = [
-  { label: "Users", icon: Users },
+  { label: "Users", icon: Users, path: "/admin/users" },
   { label: "Studios", icon: Building2, path: "/admin/dashboard#studio-owners" },
   { label: "Projects", icon: FolderOpen },
-  { label: "Bookings", icon: CalendarDays },
   { label: "Payments", icon: CreditCard },
   { label: "Analytics", icon: BarChart3 },
   { label: "Notifications", icon: Bell },

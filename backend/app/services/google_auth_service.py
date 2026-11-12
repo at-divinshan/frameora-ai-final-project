@@ -13,6 +13,7 @@ from app.core.google_oidc import authorization_url, digest, exchange_identity, n
 from app.core.security import require_jwt_configuration, verify_password
 from app.core.security import auth_versions_enabled, require_password_management, hash_password
 from app.core.auth_version import current_version, check_version
+from app.core.account_state import require_active
 from app.repositories.user_repository import lock_profile
 from app.services.password_service import locked_account, write_password
 from app.models.user import User
@@ -98,6 +99,7 @@ def callback(db: Session, state: str, code: str | None, error: str | None, brows
         user = lock_profile(db, user.id)
         public_account(user)
         result.update({"action": "login", "user_id": user.id,
+                       "account_version": require_active(db, user),
                        "auth_version": current_version(db, user.id, lock=True)})
     else:
         # An email collision is NOT evidence that the Google identity owns the local account.
@@ -120,6 +122,9 @@ def complete(db: Session, handle: str, browser: str):
     user = lock_profile(db, user.id)
     public_account(user)
     check_version(db, user, data.get("auth_version"), lock=True)
+    # A previously verified Google completion must not survive a status cycle.
+    # Legacy proofs predate account status and therefore belong to version zero.
+    require_active(db, user, data.get("account_version", 0))
     if user.id != data["user_id"]:
         raise rejected()
     return issue_session(db, user, data["remember"]), None

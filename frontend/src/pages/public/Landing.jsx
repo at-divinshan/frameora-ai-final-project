@@ -1,13 +1,28 @@
+import useTheme from "../../hooks/useTheme";
 import { Link } from "react-router-dom";
 import { ArrowRight, CalendarDays, Camera, Check, FolderHeart, Sparkles, UserRound, Users } from "lucide-react";
 import { FAQ, FeatureCard, FinalCTA, PageMeta, SectionHeading, TextLink } from "../../components/public/PublicSections";
 import { commonFaq, features } from "./publicContent";
 export default function Landing() {
+  const { theme } = useTheme();
 
 
   return <>
     <PageMeta title="Frameora AI" description="From shoot planning to pose ideas and AI-generated visuals, Frameora AI helps you capture every moment better." />
-    <section className="public-home-hero"><img className="public-hero-image" src="/images/landing/hero-dark.png" alt="Mountain peaks beneath a colorful sunset" fetchPriority="high" /><div className="public-hero-shade" /><div className="public-container public-hero-content"><div className="public-hero-copy"><span className="public-eyebrow public-pill">AI POWERED PHOTOGRAPHY PLATFORM</span><h1><span className="public-hero-line">Create Beautiful</span>{" "}<span className="public-hero-line">Moments <span className="public-gradient">with AI</span></span></h1><p>From shoot planning to pose ideas and AI-generated visuals, Frameora AI helps you capture every moment better.</p><div className="public-actions"><Link className="public-button" to="/register">Get Started<ArrowRight size={17} aria-hidden="true" /></Link><Link className="public-button public-secondary" to="/login"><UserRound size={17} aria-hidden="true" />Login</Link></div></div></div></section>
+    <section className={`public-home-hero${theme === "dark" ? " public-home-hero-dark" : ""}`} aria-labelledby="landing-hero-heading">
+      <div className="public-container public-hero-content">
+        <div className="public-hero-copy">
+          <span className="public-eyebrow public-pill">AI POWERED PHOTOGRAPHY PLATFORM</span>
+          <h1 id="landing-hero-heading"><span className="public-hero-line">Create Beautiful</span>{" "}<span className="public-hero-line">Moments <span className="public-gradient">with AI</span></span></h1>
+          <p>From shoot planning to pose ideas and AI-generated visuals, Frameora AI helps you capture every moment better.</p>
+          <div className="public-actions">
+            <Link className="public-button" to="/register">Get Started<ArrowRight size={17} aria-hidden="true" /></Link>
+            <Link className="public-button public-secondary" to="/login"><UserRound size={17} aria-hidden="true" />Login</Link>
+          </div>
+        </div>
+
+      </div>
+    </section>
     <section className="public-container public-feature-strip" aria-label="Key features">{[features[0], features[1], features[2], features[4]].map(feature => <FeatureCard key={feature.id} feature={feature} compact />)}</section>
     <section className="public-section public-container"><SectionHeading eyebrow="A clearer creative journey" title="How Frameora Works">From the first spark of inspiration to a more organized shoot.</SectionHeading><div className="public-steps">{[[UserRound, 'Create your account', 'Start with email or Google.', 'Available'], [CalendarDays, 'Plan your session', 'Bring your ideas and preferences.', 'Planned'], [Sparkles, 'Explore possibilities', 'Discover AI guidance and visual concepts.', 'Planned'], [FolderHeart, 'Keep it all together', 'Organize your gallery or studio projects.', 'Planned']].map(([Icon, title, text, status], i) => <article key={title}><span className="public-step-orb"><Icon size={28} aria-hidden="true" /></span><span className="public-step-index">0{i + 1}</span><h3>{title}</h3><p>{text}</p><span className="public-status">{status}</span></article>)}</div><div className="public-centered"><TextLink to="/how-it-works">Explore the full journey</TextLink></div></section>
     <section className="public-section public-container"><SectionHeading title="Built for Everyone">Different perspectives. One place to bring them to life.</SectionHeading><div className="public-audience-grid">{[[UserRound, 'For Creators', 'Photography enthusiasts and creators', 'Plan with intention, find new inspiration and build a personal home for your photography ideas.', '/for-creators', 'Explore Creator Features'], [Users, 'For Studios', 'Professional studio owners', 'A planned workspace for customer projects, organized images and secure, account-protected photo sharing.', '/for-studios', 'Explore Studio Features']].map(([Icon, title, subtitle, text, to, label]) => <article className="public-card public-audience" key={title}><span className="public-icon"><Icon aria-hidden="true" /></span><div><span className="public-eyebrow">{title}</span><h3>{subtitle}</h3><p>{text}</p><TextLink to={to}>{label}</TextLink></div></article>)}</div></section>

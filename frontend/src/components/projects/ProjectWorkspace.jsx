@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { phaseLabel } from '../ai/ProjectFolders';
+import { publishProjectPhase } from '../../services/shareService';
 import useAuth from '../../hooks/useAuth';
 import PlanForm from '../photography/PlanForm';
 import { preferenceEntries } from '../photography/PlanCard';
@@ -90,7 +92,7 @@ export default function ProjectWorkspace({ project, onRestriction }) {
         {project.is_editable && data.plans.length > 0 && <p>Generate a batch from the saved plan, then preview and share your images here.</p>}
         {!data.generations.length && <p>No images yet. Your saved photoshoot is ready for generation.</p>}
         {project.is_editable && data.plans.length > 0 && <Link className="owner-gradient-button" to={`/owner/ai/generate?project=${project.id}&plan=${data.plans[0].id}`}>Generate {OWNER_GENERATION_CONTRACT.batchSize} Images</Link>}
-        {data.generations.map(g => <div className="ai-generation" key={g.id}><h3>Generation #{g.id} · Plan #{g.plan_id}</h3><p>{g.images.length} images · {g.charged_credits} credits charged</p>
+        {data.generations.map(g => <div className="ai-generation" key={g.id}><h3>{phaseLabel(g)} · Plan #{g.plan_id}</h3><p>{g.images.length} images · {g.charged_credits} credits charged</p>
           {complete.some(item => item.id === g.id) ? <div className="ai-image-grid">{g.images.map((image, index) => <GeneratedImageCard key={image.id} image={image} index={index} loadImage={getOwnerGeneratedImage} enablePreview />)}</div>
             : <p>{g.status === 'owner_reserved' ? 'Generation in progress. Check its status in the studio gallery.' : g.status === 'failed' ? 'Generation failed. Check the studio gallery for details.' : 'This image batch is incomplete and cannot be displayed or shared.'}</p>}
           {complete.some(item => item.id === g.id) && <button type="button" className="owner-gradient-button" onClick={() => { setGenerationId(String(g.id)); document.getElementById('share-customer')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Share with Customer</button>}
@@ -105,7 +107,7 @@ export default function ProjectWorkspace({ project, onRestriction }) {
         {project.is_editable && <form onSubmit={createShare}>
           <div className="form-field"><label htmlFor="share-generation">Project image batch</label>
             <select id="share-generation" required value={generationId} disabled={busy} onChange={e => setGenerationId(e.target.value)}>
-              <option value="">Choose a completed generation</option>{complete.map(g => <option key={g.id} value={g.id}>Generation #{g.id} · Plan #{g.plan_id}</option>)}
+              <option value="">Choose a completed generation</option>{complete.map(g => <option key={g.id} value={g.id}>{phaseLabel(g)} · Plan #{g.plan_id}</option>)}
             </select></div>
           <div className="form-field"><label htmlFor="share-expiry">Expiration (optional, local time)</label><div className="input-wrapper"><input id="share-expiry" type="datetime-local" value={expiresAt} disabled={busy} onChange={e => setExpiresAt(e.target.value)} /></div></div>
           <button className="owner-gradient-button" disabled={busy || usage == null || usage >= data.entitlement.max_share_links || !complete.some(g => String(g.id) === generationId) || data.links.some(link => String(link.generation_id) === generationId && shareLinkStatus(link) === 'Active')}>Create Share Link</button>
@@ -116,6 +118,14 @@ export default function ProjectWorkspace({ project, onRestriction }) {
           <p>{shareLinkStatus(link)} · Expires: {link.expires_at ? utcDate(link.expires_at) : 'Never'}</p>
           {createdLinks[link.id] && shareLinkStatus(link) === 'Active' && <><label htmlFor={`share-url-${link.id}`}>New share URL</label><div className="input-wrapper"><input id={`share-url-${link.id}`} readOnly value={createdLinks[link.id]} onFocus={e => e.target.select()} /></div><button className="owner-gradient-button" onClick={() => copy(createdLinks[link.id])}>Copy Share Link</button></>}
           {!createdLinks[link.id] && shareLinkStatus(link) === 'Active' && <p>This link’s URL is not available in this browser session. Deactivate it to create a replacement.</p>}
+          {project.is_editable && shareLinkStatus(link) === 'Active' && <div className="form-field">
+            <label htmlFor={`publish-${link.id}`}>Publish a phase to this existing customer link</label>
+            <select id={`publish-${link.id}`} disabled={busy} defaultValue="" onChange={event => {
+              const phaseId = Number(event.target.value); event.target.value = '';
+              if (phaseId && window.confirm('Publish this phase to everyone with this active link?'))
+                mutate(async () => { await publishProjectPhase(project.id, link.id, phaseId); setNotice('Phase published to this link. Previous images and comments remain available.'); }).catch(() => {});
+            }}><option value="">Choose a phase to publish…</option>{complete.filter(g => g.phase_id).map(g => <option key={g.id} value={g.phase_id}>{phaseLabel(g)}</option>)}</select>
+          </div>}
           {project.is_editable && link.is_active && <button className="account-secondary" disabled={busy} onClick={() => mutate(async () => { await deactivateProjectShareLink(project.id, link.id); setNotice('Share link deactivated.'); }).catch(() => {})}>Deactivate</button>}
         </article>)}
       </section>

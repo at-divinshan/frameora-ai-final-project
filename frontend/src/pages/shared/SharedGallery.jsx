@@ -26,6 +26,8 @@ export default function SharedGallery() {
   return <AccountLayout><section className="ai-page"><header className="account-heading"><div><h1>Shared Photography Gallery</h1><p>Photography concepts shared with you by the studio.</p></div></header>
     {!data && !error && <p role="status">Loading shared gallery…</p>}
     {error && <div className="account-error" role="alert">{error}<button className="account-secondary" onClick={() => setRevision(n => n + 1)}>Retry</button></div>}
-    {data && (data.images.length ? <div className="ai-image-grid">{data.images.map((image, index) => <div key={image.id}><GeneratedImageCard image={image} index={index} loadImage={loadImage} allowDownload={false} /><ImageComments token={token} imageId={image.id} /></div>)}</div> : <p>No images are available in this shared gallery.</p>)}
+    {data && (data.phases?.length ? data.phases : [{generation_id: data.generation_id, images: data.images}]).map(phase => <section className="ai-generation" key={phase.generation_id}>
+      <h2>{phase.phase_number ? `Phase ${phase.phase_number}` : `Shared batch #${phase.generation_id}`}</h2>
+      {phase.images.length ? <div className="ai-image-grid">{phase.images.map((image, index) => <div key={image.id}><GeneratedImageCard image={image} index={index} loadImage={loadImage} allowDownload={false} /><ImageComments token={token} imageId={image.id} /></div>)}</div> : <p>No images are available in this shared gallery.</p>}</section>)}
   </section></AccountLayout>;
 }

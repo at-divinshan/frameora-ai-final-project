@@ -1,6 +1,7 @@
 """Bound AI multipart requests before Starlette spools uploaded files to disk."""
 
 from starlette.responses import JSONResponse
+import re
 
 
 class AIUploadLimit:
@@ -8,9 +9,9 @@ class AIUploadLimit:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http" or scope.get("path", "").rstrip("/") not in ("/ai/generations", "/owner/ai/generations") or scope.get("method") != "POST":
+        if scope["type"] != "http" or not re.fullmatch(r"/(?:ai/generations|owner/ai/generations|owner/projects/[0-9]+/ai/generations)/?", scope.get("path", "")) or scope.get("method") != "POST":
             return await self.app(scope, receive, send)
-        limit = 6 * 1024 * 1024  # 5 MiB reference plus bounded form overhead.
+        limit = 11 * 1024 * 1024  # Two 5 MiB files plus bounded form overhead.
         body = bytearray()
         while True:
             message = await receive()

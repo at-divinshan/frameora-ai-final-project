@@ -4,11 +4,12 @@ export async function getFreeGenerationEligibility() {
   const { data } = await api.get("/ai/free-generation/eligibility");
   return data;
 }
-export async function generateImages({ planId, description = "", reference }) {
+export async function generateImages({ planId, description = "", reference, backgroundReference }) {
   const body = new FormData();
   body.append("plan_id", planId);
   body.append("description", description);
   if (reference) body.append("reference", reference);
+  if (backgroundReference) body.append("background_reference", backgroundReference);
   const { data } = await api.post("/ai/generations", body, {
     headers: { "Content-Type": undefined },
     // Four sequential provider calls; no automatic retries for this mutation.

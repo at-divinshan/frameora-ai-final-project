@@ -16,6 +16,8 @@ import {
 import "../../styles/account.css";
 import "../../styles/ai.css";
 
+import ProjectFolders, { useProjectGallery, phaseLabel } from "../../components/ai/ProjectFolders";
+
 function utcDate(value) {
   if (!value) return "Unavailable";
   const date = new Date(/[Zz]|[+-]\d\d:\d\d$/.test(value) ? value : `${value}Z`);
@@ -23,25 +25,11 @@ function utcDate(value) {
 }
 
 export default function OwnerAIResults() {
-  const [items, setItems] = useState([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(0);
+  const gallery = useProjectGallery(refresh);
+  const {items, setItems, error, setError, loading} = gallery;
   const [recovering, setRecovering] = useState(null);
   const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError("");
-    getOwnerGenerations().then((data) => {
-      if (active) setItems(data);
-    }).catch((requestError) => {
-      if (active) setError(ownerGenerationError(requestError));
-    }).finally(() => {
-      if (active) setLoading(false);
-    });
-    return () => { active = false; };
-  }, [refresh]);
 
   useEffect(() => {
     const deadlines = items
@@ -81,7 +69,8 @@ export default function OwnerAIResults() {
       onClick={() => setRefresh((current) => current + 1)}>Refresh gallery</button>
     {error && <p className="user-plan-message is-error" role="alert">{error}</p>}
     {loading && <p role="status">Loading your studio gallery…</p>}
-    {!loading && !error && !items.length && <div className="user-dashboard-empty-state">No Studio Owner generations yet.</div>}
+    {!loading && !error && !gallery.folders.length && !gallery.selected && <div className="user-dashboard-empty-state">No Studio Owner generations yet.</div>}
+    <ProjectFolders gallery={gallery} owner />
     {items.map((generation) => {
       const complete = generation.status === "completed" &&
         isOwnerGalleryBatch(
@@ -97,7 +86,7 @@ export default function OwnerAIResults() {
       const canRecover = generation.status === "owner_reserved" &&
         Number.isFinite(deadline) && now >= deadline;
       return <section className="ai-generation account-card" key={generation.id}>
-        <h2>Photography plan #{generation.plan_id}</h2>
+        <h2>{phaseLabel(generation)} · Photography plan #{generation.plan_id}</h2>
         <p>{utcDate(generation.created_at)}</p>
         {complete && <>
           <p>{generation.images.length} images · {generation.charged_credits} credits charged · {generation.remaining_credits} available</p>
@@ -116,5 +105,6 @@ export default function OwnerAIResults() {
         {incomplete && <p className="user-plan-message is-error" role="alert">{ownerGenerationStatusMessage(generation)}</p>}
       </section>;
     })}
+    {gallery.hasMore && <button className="account-secondary" disabled={loading} onClick={gallery.loadMore}>Load more</button>}
   </section></AccountLayout>;
 }

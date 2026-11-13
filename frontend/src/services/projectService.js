@@ -19,5 +19,16 @@ export function projectError(error, action = 'load') {
 export const getProjectPlans = (id, signal) => api.get(`/owner/projects/${id}/photography-plans`, { signal }).then(r => r.data);
 export const createProjectPlan = (id, values) => api.post(`/owner/projects/${id}/photography-plans`, values).then(r => r.data);
 export const linkProjectPlan = (id, planId) => api.post(`/owner/projects/${id}/photography-plans/${planId}`).then(r => r.data);
-export const getProjectGenerations = (id, signal) => api.get(`/owner/projects/${id}/ai/generations`, { signal }).then(r => r.data);
+export async function getProjectGenerations(id, signal) {
+  const items = []; let before;
+  do {
+    const {data} = await api.get(`/owner/projects/${id}/ai/generations`, {signal, params: {before}});
+    items.push(...data);
+    if (data.length < 20) break;
+    const next = data.at(-1).id;
+    if (before != null && next >= before) throw new Error('Invalid gallery pagination');
+    before = next;
+  } while (!signal?.aborted);
+  return items;
+}
 export const eligibleProjectPlans = plans => plans.filter(plan => plan.project_id == null);

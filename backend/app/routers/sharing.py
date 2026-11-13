@@ -55,6 +55,13 @@ def deactivate_project_share_link(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.put('/owner/projects/{project_id}/share-links/{link_id}/phases/{phase_id}', dependencies=[Depends(owner_request)])
+def publish_project_phase(project_id: int, link_id: int, phase_id: int,
+                          user: User = Depends(owner_identity), db: Session = Depends(get_db)):
+    from app.services.project_phase_service import publish
+    return publish(db, user, project_id, link_id, phase_id)
+
+
 @router.get("/sharing/{token}", response_model=SharedGeneration)
 def shared_generation(
     token: str,

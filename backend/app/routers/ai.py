@@ -1,6 +1,6 @@
 """Authenticated AI generation, private media, and free allowance eligibility."""
 
-from fastapi import APIRouter, Depends, Response, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, Response, File, Form, HTTPException, Query, UploadFile, Request
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import require_roles
@@ -26,28 +26,30 @@ def free_generation_eligibility(
     response.headers["Pragma"] = "no-cache"
     return free_generation_service.eligibility(db, user)
 
-@router.post("/generations", response_model=GenerationResponse, status_code=201)
+async def reference_fields(request: Request):
+    form = await request.form()
+    for name in ('reference', 'reference_photo', 'background_reference'):
+        if len(form.getlist(name)) > 1:
+            raise HTTPException(422, 'Upload each reference only once.')
+
+@router.post("/generations", response_model=GenerationResponse, status_code=201, dependencies=[Depends(reference_fields)])
 def generate_images(
     response: Response,
     plan_id: int = Form(..., gt=0),
     description: str = Form("", max_length=2000),
     reference: UploadFile | None = File(None),
+    reference_photo: UploadFile | None = File(None),
+    background_reference: UploadFile | None = File(None),
     user: User = Depends(normal_user),
     db: Session = Depends(get_db),
 ):
     response.headers["Cache-Control"] = "no-store"
-    normalized = None
-    if reference is not None:
-        try:
-            if reference.content_type not in ("image/jpeg", "image/png", "image/webp"):
-                raise HTTPException(422, "Upload a JPEG, PNG or WebP reference image.")
-            data = reference.file.read(ai_image_storage.MAX_UPLOAD + 1)
-            if len(data) > ai_image_storage.MAX_UPLOAD:
-                raise HTTPException(413, "Reference images must not exceed 5 MiB.")
-            normalized = ai_image_storage.normalize_image(data)
-        finally:
-            reference.file.close()
-    return ai_service.generate(db, user, plan_id=plan_id, description=description.strip(), reference=normalized)
+    from app.routers.owner_ai import _normalize_reference_fields, _normalize_reference
+    normalized = _normalize_reference_fields(reference, reference_photo)
+    background = _normalize_reference(background_reference)
+    return ai_service.generate(db, user, plan_id=plan_id, description=description.strip(),
+                               reference=normalized, background_reference=background)
+
 
 
 @router.get("/generations", response_model=list[GenerationResponse])
@@ -67,3 +69,19 @@ def my_image(asset_id: int, user: User = Depends(normal_user), db: Session = Dep
         "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
         "Content-Disposition": 'inline; filename="frameora.png"',
     })
+
+
+@router.get('/gallery/folders')
+def gallery_folders(response: Response, user: User = Depends(require_roles('user', 'owner')),
+                    db: Session = Depends(get_db)):
+    from app.services.gallery_service import folders
+    response.headers['Cache-Control'] = 'private, no-store'
+    return folders(db, user)
+
+
+@router.get('/gallery/folders/{key}')
+def gallery_contents(key: str, response: Response, before: int | None = Query(None, gt=0),
+                     user: User = Depends(require_roles('user', 'owner')), db: Session = Depends(get_db)):
+    from app.services.gallery_service import contents
+    response.headers['Cache-Control'] = 'private, no-store'
+    return contents(db, user, key, before)

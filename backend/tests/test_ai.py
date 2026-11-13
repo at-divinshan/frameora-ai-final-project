@@ -213,7 +213,7 @@ class GenerationTests(unittest.TestCase):
 
     def test_request_body_bound_before_multipart_parsing(self):
         response = self.client.post("/ai/generations", headers={**self.headers, "Content-Type": "application/octet-stream"},
-                                    content=b"x" * (6 * 1024 * 1024 + 1))
+                                    content=b"x" * (11 * 1024 * 1024 + 1))
         self.assertEqual(response.status_code, 413)
         self.mock_provider.assert_not_called()
         self.assertEqual(self.status(), "available")

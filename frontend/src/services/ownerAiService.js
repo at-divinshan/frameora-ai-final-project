@@ -29,6 +29,7 @@ export async function generateOwnerImages({
   description = "",
   preferences,
   reference,
+  backgroundReference,
   idempotencyKey,
 }) {
   const customization = normalizeOwnerPreferences(preferences);
@@ -39,6 +40,7 @@ export async function generateOwnerImages({
   body.append("description", description);
   for (const [key, value] of Object.entries(customization)) body.append(key, value);
   if (reference) body.append("reference", reference);
+  if (backgroundReference) body.append("background_reference", backgroundReference);
   const { data } = await api.post(projectId ? `/owner/projects/${projectId}/ai/generations` : "/owner/ai/generations", body, {
     headers: { "Content-Type": undefined },
     timeout: OWNER_GENERATION_CONTRACT.requestTimeoutMs,

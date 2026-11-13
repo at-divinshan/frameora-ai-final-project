@@ -161,6 +161,7 @@ export default function OwnerAIGenerator({ photoshoot } = {}) {
   const [preferences, setPreferences] = useState(() => normalizeOwnerPreferences(readPending(user?.id)?.preferences || photoshoot?.preferences));
   const [preferenceErrors, setPreferenceErrors] = useState({});
   const [reference, setReference] = useState(photoshoot?.reference || null);
+  const [backgroundReference, setBackgroundReference] = useState(null);
   const [entitlement, setEntitlement] = useState(null);
   const [activeGeneration, setActiveGeneration] = useState(null);
   const [result, setResult] = useState(null);
@@ -185,7 +186,7 @@ export default function OwnerAIGenerator({ photoshoot } = {}) {
   }, [selectedPlan, planId, pending]);
   const blockedByPending = Boolean(activeGeneration?.status === "owner_reserved");
   const pendingStorageUnavailable = pending?.storageUnavailable === true;
-  const retryNeedsReference = Boolean(pending?.referenceInfo && !reference);
+  const retryNeedsReference = Boolean((pending?.referenceInfo && !reference) || (pending?.backgroundReferenceInfo && !backgroundReference));
   const retryContractMatches = !pending ||
     ownerContractsMatch(pending.contract, OWNER_GENERATION_CONTRACT);
   const [projectAccess, setProjectAccess] = useState(null);
@@ -352,8 +353,8 @@ export default function OwnerAIGenerator({ photoshoot } = {}) {
       setError("Choose a JPEG, PNG or WebP reference photo of at most 5 MiB.");
       return;
     }
-    if (pending && !referenceMatches(reference, pending.referenceInfo)) {
-      setError("Re-select the same reference photo used for this pending request before retrying it.");
+    if (pending && (!referenceMatches(reference, pending.referenceInfo) || !referenceMatches(backgroundReference, pending.backgroundReferenceInfo))) {
+      setError("Re-select the same person and background images used for this pending request before retrying it.");
       return;
     }
     if (pending && !retryContractMatches) {
@@ -377,6 +378,7 @@ export default function OwnerAIGenerator({ photoshoot } = {}) {
           description: description.trim(),
           preferences: normalizeOwnerPreferences(preferences),
           contract: OWNER_GENERATION_CONTRACT,
+          backgroundReferenceInfo: backgroundReference ? { name: backgroundReference.name, size: backgroundReference.size, type: backgroundReference.type, lastModified: backgroundReference.lastModified } : null,
           referenceInfo: reference ? {
             name: reference.name,
             size: reference.size,
@@ -403,6 +405,7 @@ export default function OwnerAIGenerator({ photoshoot } = {}) {
         description: request.description,
         preferences: request.preferences,
         reference,
+        backgroundReference,
         idempotencyKey: request.idempotencyKey,
       });
       if (generation.status === "owner_reserved") {
@@ -451,6 +454,7 @@ export default function OwnerAIGenerator({ photoshoot } = {}) {
     setActiveGeneration(null);
     setReference(null);
     setDescription("");
+    setBackgroundReference(null);
     setPreferences({ ...DEFAULT_OWNER_PREFERENCES });
     setPreferenceErrors({});
     setReviewing(false);
@@ -549,20 +553,22 @@ export default function OwnerAIGenerator({ photoshoot } = {}) {
             }} />
           </details>
           {photoshoot?.reference && reference && <p>Reference photo ready: {reference.name}</p>}
-          <ImageUploader onChange={setReference} disabled={busy} />
+          <ImageUploader value={reference} onChange={setReference} disabled={busy} />
+          <ImageUploader id="background-reference" background value={backgroundReference} onChange={setBackgroundReference} disabled={busy} />
+          {backgroundReference && <p className="ai-note">The uploaded scene takes priority over automatic background variations.</p>}
           {retrying && <p className="ai-note">Retrying the same request key; the plan and customization preferences are locked to the original submission.</p>}
           {reviewing && !retrying && <OwnerGenerationConfirmation entitlement={entitlement} busy={busy}
             onConfirm={submitBatch} onCancel={() => setReviewing(false)} />}
           {!reviewing && !retrying && <button type="submit" className="owner-gradient-button"
             disabled={!selectedPlan || !canGenerate}>Review {OWNER_GENERATION_CONTRACT.batchSize} images / {OWNER_GENERATION_CONTRACT.batchCost} credits</button>}
           {retrying && retryContractMatches && <button type="submit" className="owner-gradient-button" disabled={busy || retryNeedsReference}>
-            {retryNeedsReference ? "Re-select original reference photo to retry" : "Retry the same request"}
+            {retryNeedsReference ? "Re-select original reference images to retry" : "Retry the same request"}
           </button>}
           {retrying && !retryContractMatches && <p className="user-plan-message is-error" role="alert">
             This request was created for a different batch contract and cannot be resubmitted. Check the owner gallery before starting another batch.
             {" "}<Link to="/owner/ai/gallery">Check owner gallery</Link>
           </p>}
-          {retryNeedsReference && <p role="status">Re-select the exact original photo to safely retry this request.</p>}
+          {retryNeedsReference && <p role="status">Re-select the original person and background images, where supplied, to safely retry this request.</p>}
         </fieldset>
       </form>}
       {!photoshoot && plans.length > 0 && !showPlanForm && !blockedByPending && <button type="button" className="account-secondary"

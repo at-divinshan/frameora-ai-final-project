@@ -25,6 +25,7 @@ export default function AIGenerator() {
   const [planId, setPlanId] = useState(params.get("plan") || "");
   const [description, setDescription] = useState("");
   const [reference, setReference] = useState(null);
+  const [backgroundReference, setBackgroundReference] = useState(null);
   const [eligibility, setEligibility] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,7 +55,7 @@ export default function AIGenerator() {
     submitting.current = true;
     setBusy(true); setError("");
     try {
-      await generateImages({ planId, description, reference });
+      await generateImages({ planId, description, reference, backgroundReference });
       navigate("/user/gallery");
     } catch (err) {
       setError(generationError(err));
@@ -83,7 +84,8 @@ export default function AIGenerator() {
             <p className="ai-note">Your saved requirements are included automatically in every image.</p>
           </section>}
           <div className="form-field"><label htmlFor="ai-description">Additional description (optional)</label><textarea id="ai-description" maxLength={500} rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add a short detail for this generation, if needed…" /></div>
-          <ImageUploader onChange={setReference} disabled={busy} />
+          <ImageUploader value={reference} onChange={setReference} disabled={busy} />
+          <ImageUploader id="background-reference" background value={backgroundReference} onChange={setBackgroundReference} disabled={busy} />
           <p className="ai-note">Your saved plan, additional description and optional photo are sent to Pollinations to generate images. Frameora keeps your gallery private; the provider may retain generated media.</p>
           <button className="user-dashboard-create-button" type="submit" disabled={!selectedPlan}>Generate four images</button>
         </fieldset>

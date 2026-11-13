@@ -47,7 +47,11 @@ def generation_view(db: Session, generation: AIGeneration) -> dict:
                     continue
     except (ValueError, TypeError):
         pass
+    from app.services.project_phase_service import phase_for
+    phase = phase_for(db, generation.id)
     return {
+        "phase_id": phase.id if phase else None,
+        "phase_number": phase.phase_number if phase else None,
         "id": generation.id, "plan_id": generation.plan_id,
         "status": generation.status, "created_at": generation.created_at,
         "images": [{"id": asset.id, "url": f"/ai/images/{asset.id}",
@@ -64,7 +68,8 @@ def list_generations(db: Session, user: User, *, before: int | None = None) -> l
     )]
 
 
-def generate(db: Session, user: User, *, plan_id: int, description: str, reference: bytes | None):
+def generate(db: Session, user: User, *, plan_id: int, description: str, reference: bytes | None, background_reference: bytes | None = None):
+    provider.require_reference_support(background_reference)
     provider.require_configured()
     plan = plan_repository.find_for_user(db, user.id, plan_id)
     if plan is None:
@@ -81,7 +86,7 @@ def generate(db: Session, user: User, *, plan_id: int, description: str, referen
     generation_started = time.monotonic()
     try:
         # Do not retain a DB transaction across network calls.
-        images = provider.generate_images(prompt, reference, shots=shots)
+        images = provider.generate_images(prompt, reference, shots=shots, **({"background_reference": background_reference} if background_reference is not None else {}))
         if len(images) != 4 or len(set(images)) != 4:
             raise HTTPException(502, "The provider did not return four different images.")
         stage = "storage"

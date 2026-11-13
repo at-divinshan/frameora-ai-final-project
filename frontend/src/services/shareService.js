@@ -22,3 +22,5 @@ export function sharingError(error) {
   if (error.response?.status === 403) return 'You do not have access to this shared gallery.';
   return 'Unable to load the shared gallery. Please try again.';
 }
+
+export const publishProjectPhase = (projectId, linkId, phaseId) => api.put(`/owner/projects/${projectId}/share-links/${linkId}/phases/${phaseId}`).then(r => r.data);

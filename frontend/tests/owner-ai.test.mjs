@@ -83,6 +83,7 @@ try {
       planId: 3,
       description: "Studio portrait",
       reference: new Blob(["fixture"], { type: "image/png" }),
+      backgroundReference: new Blob(["background"], { type: "image/jpeg" }),
       idempotencyKey: "stable-key-for-retry-001",
     });
     const request = requests[0];
@@ -91,6 +92,7 @@ try {
     assert.equal(request.data.get("description"), "Studio portrait");
     assert.equal(request.data.get("idempotency_key"), "stable-key-for-retry-001");
     assert.equal(request.data.get("reference").type, "image/png");
+    assert.equal(request.data.get("background_reference").type, "image/jpeg");
     assert.equal(request.timeout, 1300000);
     assert.notEqual(request.headers["Content-Type"], "application/json");
 

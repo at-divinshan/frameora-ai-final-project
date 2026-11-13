@@ -1,6 +1,6 @@
 """Owner-only AI operations and saved photography inputs, separate from free previews."""
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, Query
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -25,7 +25,7 @@ async def exact_generation_fields(request: Request):
     form = await request.form()
     allowed = {
         'plan_id', 'description', 'reference', 'idempotency_key',
-        'reference_photo',
+        'reference_photo', 'background_reference',
         'background_mode', 'pose_mode', 'camera_angle_mode', 'outfit_mode',
         'dress_colors', 'outfit_details', 'additional_instructions',
     }
@@ -83,11 +83,13 @@ def generate(response: Response, plan_id: int = Form(..., gt=0),
              idempotency_key: str = Form(..., min_length=16, max_length=128, pattern=r'^[A-Za-z0-9_-]+$'),
              description: str = Form('', max_length=2000), reference: UploadFile | None = File(None),
              reference_photo: UploadFile | None = File(None),
+             background_reference: UploadFile | None = File(None),
              preferences: OwnerGenerationPreferences = Depends(owner_generation_preferences),
              user: User = Depends(owner_identity), db: Session = Depends(get_db)):
     normalized = _normalize_reference_fields(reference, reference_photo)
+    background = _normalize_reference(background_reference)
     result = generations.generate(db, user, plan_id=plan_id, description=description.strip(),
-                                  reference=normalized, idempotency_key=idempotency_key,
+                                  reference=normalized, background_reference=background, idempotency_key=idempotency_key,
                                   preferences=preferences.model_dump())
     response.status_code = 200 if result['replayed'] else 201
     return result
@@ -99,11 +101,13 @@ def generate_for_project(project_id: int, response: Response, plan_id: int = For
                          idempotency_key: str = Form(..., min_length=16, max_length=128, pattern=r'^[A-Za-z0-9_-]+$'),
                          description: str = Form('', max_length=2000), reference: UploadFile | None = File(None),
                          reference_photo: UploadFile | None = File(None),
+             background_reference: UploadFile | None = File(None),
                          preferences: OwnerGenerationPreferences = Depends(owner_generation_preferences),
                          user: User = Depends(owner_identity), db: Session = Depends(get_db)):
     normalized = _normalize_reference_fields(reference, reference_photo)
+    background = _normalize_reference(background_reference)
     result = generations.generate(db, user, plan_id=plan_id, description=description.strip(),
-                                  reference=normalized, idempotency_key=idempotency_key,
+                                  reference=normalized, background_reference=background, idempotency_key=idempotency_key,
                                   project_id=project_id, preferences=preferences.model_dump())
     response.status_code = 200 if result['replayed'] else 201
     return result
@@ -115,8 +119,8 @@ def gallery(user: User = Depends(owner_identity), db: Session = Depends(get_db))
 
 
 @router.get('/projects/{project_id}/ai/generations', response_model=list[OwnerGenerationResponse])
-def project_gallery(project_id: int, user: User = Depends(owner_identity), db: Session = Depends(get_db)):
-    return generations.list_project_results(db, user, project_id)
+def project_gallery(project_id: int, before: int | None = Query(None, gt=0), user: User = Depends(owner_identity), db: Session = Depends(get_db)):
+    return generations.list_project_results(db, user, project_id, before)
 
 
 @router.get('/ai/generations/{generation_id}', response_model=OwnerGenerationResponse)

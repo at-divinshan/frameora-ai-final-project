@@ -237,7 +237,15 @@ def view_shared_generation(db: Session, user: User, token: str) -> SharedGenerat
         result = ai_service.generation_view(db, generation)
         if not result["images"]:
             raise HTTPException(404, "Shared images not found.")
+        from app.services.project_phase_service import visible_generations, phase_for
+        phases = []
+        for item in visible_generations(db, link, project, generation):
+            phase = phase_for(db, item.id)
+            phases.append(dict(generation_id=item.id, phase_number=phase.phase_number if phase else None,
+                               images=ai_service.generation_view(db, item)['images']))
+        phases.sort(key=lambda p: (p['phase_number'] is not None, p['phase_number'] or 0, p['generation_id']))
         shared = SharedGeneration(
+            phases=phases,
             project_id=project.id,
             generation_id=generation.id,
             images=[
@@ -254,10 +262,12 @@ def view_shared_generation(db: Session, user: User, token: str) -> SharedGenerat
 def read_shared_image(db: Session, user: User, token: str, asset_id: int) -> bytes:
     try:
         link, project, generation = _active_share(db, token, _now())
+        from app.services.project_phase_service import visible_generations
+        allowed = [g.id for g in visible_generations(db, link, project, generation)]
         asset = db.scalar(
             select(MediaAsset).where(
                 MediaAsset.id == asset_id,
-                MediaAsset.generation_id == generation.id,
+                MediaAsset.generation_id.in_(allowed),
                 MediaAsset.user_id == project.studio_owner_id,
                 MediaAsset.asset_type == "ai_generated",
             )

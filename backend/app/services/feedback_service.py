@@ -19,8 +19,10 @@ def require_schema(db):
 
 def shared_asset(db, token, asset_id):
     link,project,generation=share_service._active_share(db,token,share_service._now())
+    from app.services.project_phase_service import visible_generations
+    allowed = [g.id for g in visible_generations(db, link, project, generation)]
     asset=db.scalar(select(MediaAsset).where(MediaAsset.id==asset_id,
-        MediaAsset.generation_id==generation.id,MediaAsset.user_id==project.studio_owner_id,
+        MediaAsset.generation_id.in_(allowed),MediaAsset.user_id==project.studio_owner_id,
         MediaAsset.asset_type=='ai_generated'))
     if asset is None:raise HTTPException(404,"Shared image not found.")
     return link,project,asset

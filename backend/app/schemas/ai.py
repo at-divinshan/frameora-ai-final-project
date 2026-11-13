@@ -36,6 +36,8 @@ class GeneratedImage(BaseModel):
 
 
 class GenerationResponse(BaseModel):
+    phase_id: int | None = None
+    phase_number: int | None = None
     id: int
     plan_id: int
     status: str

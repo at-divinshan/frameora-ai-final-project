@@ -44,10 +44,12 @@ def operation_key(key):
     return sha256(('owner-generation:v1:' + key).encode()).digest()
 
 
-def request_hash(plan_id, description, reference, project_id=None, preferences=None):
+def request_hash(plan_id, description, reference, project_id=None, preferences=None, background_reference=None):
     # A saved plan may change after submission. A retry is identified by the submitted
     # inputs, not the subsequently edited plan; its original results are immutable.
     value = [plan_id, description.strip(), sha256(reference).hexdigest() if reference is not None else None]
+    if background_reference is not None:
+        value.append({"background_reference": sha256(background_reference).hexdigest()})
     if project_id is not None:
         value.append(project_id)
     if preferences and preferences != DEFAULT_PREFERENCES:
@@ -125,14 +127,14 @@ def _recover_expired_locked(db, user, now):
         _refund_locked(db, generation, debit, now)
 
 
-def _reserve(db, user, plan_id, description, reference, key, project_id=None, preferences=None):
+def _reserve(db, user, plan_id, description, reference, key, project_id=None, preferences=None, background_reference=None):
     try:
         _lock_owner(db, user)
         now = subscriptions.clock()
         preferences = OwnerGenerationPreferences.model_validate(
             preferences or DEFAULT_PREFERENCES
         ).model_dump()
-        digest = request_hash(plan_id, description, reference, project_id, preferences)
+        digest = request_hash(plan_id, description, reference, project_id, preferences, background_reference)
         plan = None
         if project_id is not None:
             project_service.require_project_access(db, user, project_id, editable=False)
@@ -157,8 +159,8 @@ def _reserve(db, user, plan_id, description, reference, key, project_id=None, pr
             plan = plan_repository.find_for_user(db, user.id, plan_id)
         if plan is None:
             raise HTTPException(403, 'You do not have access to this photography plan.')
-        prompt = build_owner_image_prompt(plan, description, preferences)
-        shots = planned_owner_shots(plan, preferences)
+        prompt = build_owner_image_prompt(plan, description, preferences, **({"background_reference": True, "person_reference": reference is not None} if background_reference is not None else {}))
+        shots = planned_owner_shots(plan, preferences, background_reference=background_reference is not None)
         _recover_expired_locked(db, user, now)
         subscription, state = entitlements.resolve_locked(db, user, now=now, persist=True, grant=True)
         if not state['generation_allowed']:
@@ -262,9 +264,10 @@ def recover(db, user, generation_id):
 
 
 def generate(db, user, *, plan_id, description, reference, idempotency_key,
-             project_id=None, preferences=None):
+             project_id=None, preferences=None, background_reference=None):
+    provider.require_reference_support(background_reference)
     generation_id, prompt, shots = _reserve(
-        db, user, plan_id, description, reference, idempotency_key, project_id, preferences
+        db, user, plan_id, description, reference, idempotency_key, project_id, preferences, background_reference
     )
     if prompt is None:
         result = get_result(db, user, generation_id, replayed=True)
@@ -278,7 +281,8 @@ def generate(db, user, *, plan_id, description, reference, idempotency_key,
     stage = 'provider_request'
     try:
         images = provider.generate_images(
-            prompt, reference, shots=shots, generation_id=generation_id
+            prompt, reference, shots=shots, generation_id=generation_id,
+            **({"background_reference": background_reference} if background_reference is not None else {})
         )
         stage = 'image_validation'
         if len(images) != len(shots) or len(set(images)) != len(shots):
@@ -322,6 +326,8 @@ def generate(db, user, *, plan_id, description, reference, idempotency_key,
         generation.guidance_text = json.dumps({'version': 1, 'images': guidance}, ensure_ascii=False)
         generation.status = SUCCESS
         generation.completed_at = subscriptions.clock()
+        from app.services.project_phase_service import record_completed
+        record_completed(db, generation, generation.completed_at)
         db.flush()
         from app.services import notification_service
         if notification_service.available(db):
@@ -389,7 +395,7 @@ def list_results(db, user):
         db.rollback()
 
 
-def list_project_results(db, user, project_id):
+def list_project_results(db, user, project_id, before=None):
     try:
         _lock_owner(db, user)
         project_service.require_project_access(db, user, project_id, editable=False)
@@ -398,7 +404,8 @@ def list_project_results(db, user, project_id):
             .join(PhotographyPlan, PhotographyPlan.id == AIGeneration.plan_id)
             .where(AIGeneration.user_id == user.id, CreditTransaction.user_id == user.id,
                 CreditTransaction.transaction_type == 'spend',
-                PhotographyPlan.user_id == user.id, PhotographyPlan.project_id == project_id)
+                PhotographyPlan.user_id == user.id, PhotographyPlan.project_id == project_id,
+                AIGeneration.id < before if before is not None else True)
             .order_by(AIGeneration.id.desc()).limit(20)))
         return [_response_locked(db, user, *_owned(db, user.id, gid)) for gid in ids]
     finally:

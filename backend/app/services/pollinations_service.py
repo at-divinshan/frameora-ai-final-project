@@ -48,14 +48,31 @@ def require_configured():
         raise HTTPException(503, "AI generation is not configured yet. Please try again later.")
 
 
+def require_reference_support(background_reference):
+    # Locally verified model contracts only; no metadata API call or model switch.
+    if background_reference is not None and settings.pollinations_image_model not in (
+        'microsoft/mai-image-2.6-flash', 'openai/gpt-image-1-mini',
+    ):
+        raise HTTPException(422, 'Background references are not enabled for the configured image model.')
+
+
 def generate_images(
     description: str,
-    reference: bytes | None,
+    reference: bytes | list[bytes] | None,
     *,
+    background_reference: bytes | None = None,
     shots: list[dict] | None = None,
     generation_id: int | None = None,
 ) -> list[bytes]:
     require_configured()
+    if isinstance(reference, list):
+        if len(reference) > 2 or background_reference is not None:
+            raise HTTPException(422, 'Supply at most one person and one background reference.')
+        if len(reference) == 2:
+            reference, background_reference = reference
+        else:
+            reference = reference[0] if reference else None
+    require_reference_support(background_reference)
     shots = shots if shots is not None else planned_shots()
     if len(shots) not in (2, 4, 8):
         raise ValueError("Exactly two, four or eight planned shots are required")
@@ -65,6 +82,16 @@ def generate_images(
         "Use the reference person's appearance when an image is supplied. "
         "Produce one photograph, not a collage. Subject and setting: " + description
     )
+    references = reference if isinstance(reference, list) else ([reference] if reference is not None else [])
+    if background_reference is not None:
+        references = [*references, background_reference]
+        identity = (
+            ("Image 1 is the person's identity reference. Image 2 is the target background. Preserve recognizable facial features, hairstyle and appearance. " if reference is not None else
+             "Image 1 is ONLY the target background. No person identity reference was supplied; do not claim to preserve a specific person's identity. ")
+            + "Place the subject naturally in the supplied scene. Match lighting, perspective, scale, shadows and color temperature. "
+            + "Produce one coherent photograph, not a collage. The supplied scene overrides saved or automatic location/background variations. "
+            + "Respect compatible pose and outfit instructions. Other photography instructions: " + description
+        )
     images = []
     elapsed_started = time.monotonic()
     transport = httpx.HTTPTransport()
@@ -80,9 +107,9 @@ def generate_images(
                     "n": 1,
                 }
                 endpoint = "/v1/images/generations"
-                if reference is not None:
+                if references:
                     endpoint = "/v1/images/edits"
-                    body["image"] = [{"image_url": "data:image/png;base64," + base64.b64encode(reference).decode("ascii")}]
+                    body["image"] = [{"image_url": "data:image/png;base64," + base64.b64encode(item).decode("ascii")} for item in references]
                 call_started = time.monotonic()
                 request_http_status = None
                 validation_stage = "http_response"

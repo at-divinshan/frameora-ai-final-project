@@ -128,3 +128,8 @@
   .owner-ai-page .ai-form small { grid-column: 1; grid-row: auto; border-left: 0; padding-left: 0; }
   .owner-ai-page .ai-form { padding: 12px; }
 }
+
+.gallery-folder { display: flex; flex-direction: column; gap: .75rem; text-align: left; color: inherit; cursor: pointer; min-width: 0; overflow: hidden; }
+.gallery-folder img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: .75rem; }
+.gallery-folder strong { overflow-wrap: anywhere; }
+.gallery-folder-placeholder { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; font-size: 4rem; opacity: .6; }

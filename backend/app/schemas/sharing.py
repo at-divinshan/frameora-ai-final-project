@@ -49,7 +49,14 @@ class SharedImage(BaseModel):
     guidance: ImageGuidance | None
 
 
+class SharedPhase(BaseModel):
+    generation_id: int
+    phase_number: int | None = None
+    images: list[SharedImage]
+
+
 class SharedGeneration(BaseModel):
+    phases: list[SharedPhase] = Field(default_factory=list)
     project_id: int
     generation_id: int
     images: list[SharedImage]

@@ -19,11 +19,12 @@ try {
     return {data: {id: 1}, status: 200, statusText: "OK", headers: {}, config};
   };
   setAccessToken("test-session-only");
-  await generateImages({planId: 7, description: "Portrait in a garden", reference: new Blob(["test"], {type:"image/png"})});
+  await generateImages({planId: 7, description: "Portrait in a garden", reference: new Blob(["test"], {type:"image/png"}), backgroundReference: new Blob(["scene"], {type:"image/webp"})});
   assert.equal(requests[0].url, "/ai/generations");
   assert.equal(requests[0].data.get("plan_id"), "7");
   assert.equal(requests[0].data.get("description"), "Portrait in a garden");
   assert.equal(requests[0].data.get("reference").type, "image/png");
+  assert.equal(requests[0].data.get("background_reference").type, "image/webp");
   assert.equal(requests[0].headers.Authorization, "Bearer test-session-only");
   assert.notEqual(requests[0].headers["Content-Type"], "application/json");
   await getGeneratedImage(8);
@@ -36,13 +37,19 @@ try {
   assert.equal(requests[3].data.get("description"), "");
   const componentOutput = path.join(temporary, "components.mjs");
   await build({
-    stdin: { contents: 'export {default as Loader} from "./src/components/ai/GenerationLoader.jsx"; export {default as Card} from "./src/components/ai/GeneratedImageCard.jsx";', resolveDir: process.cwd() },
+    stdin: { contents: 'export {default as Uploader} from "./src/components/ai/ImageUploader.jsx";export {default as Loader} from "./src/components/ai/GenerationLoader.jsx"; export {default as Card} from "./src/components/ai/GeneratedImageCard.jsx";', resolveDir: process.cwd() },
     bundle: true, format: "esm", platform: "node", packages: "external", outfile: componentOutput, jsx: "automatic",
     define: { "import.meta.env": JSON.stringify({ VITE_API_URL: "http://localhost:8000" }) },
   });
-  const { Loader, Card } = await import(pathToFileURL(componentOutput));
+  const { Loader, Card, Uploader } = await import(pathToFileURL(componentOutput));
   const { default: React } = await import("react");
   const { renderToStaticMarkup } = await import("react-dom/server");
+  const uploads = renderToStaticMarkup(React.createElement(React.Fragment, null,
+    React.createElement(Uploader, {id:'person',value:{name:'person.png'},onChange:()=>{}}),
+    React.createElement(Uploader, {id:'background',background:true,value:{name:'scene.png'},onChange:()=>{}})));
+  assert.match(uploads,/Person Reference Image/);assert.match(uploads,/Background Reference Image/);
+  assert.match(uploads,/Remove person image/);assert.match(uploads,/Remove background image/);
+  assert.match(uploads,/id="person"/);assert.match(uploads,/id="background"/);
   const loader = renderToStaticMarkup(React.createElement(Loader));
   assert.equal((loader.match(/ai-skeleton-card/g) || []).length, 4);
   const ownerLoader = renderToStaticMarkup(React.createElement(Loader, {imageCount: 8}));

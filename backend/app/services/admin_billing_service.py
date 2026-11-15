@@ -5,6 +5,7 @@ from app.models.subscription_plan import SubscriptionPlan
 from app.models.credit_transaction import CreditTransaction
 from app.models.free_generation_allowance import FreeGenerationAllowance
 from app.models.payment import Payment
+from app.models.payment_preparation import PaymentCheckout
 from app.services import credit_service, subscription_service, free_generation_service
 
 
@@ -20,11 +21,10 @@ def subscription_details(db, user):
                   allocated=None, used=None, remaining=None, period_start=None,
                   period_end=None, allowance_status=None, note=None)
     if user.role == 'user':
-        result['note'] = 'Monthly credits are not active. This account uses a one-time four-image generation allowance, not a credit balance.'
+        result['note'] = 'This account retains its one-time four-image generation allowance independently of paid credits.'
         if available(db, FreeGenerationAllowance):
             # Shared read-only status semantics: no allowance row means available.
             result['allowance_status'] = free_generation_service._status_for(db, user.id)
-        return result
     if not available(db, Subscription, SubscriptionPlan):
         result['note'] = 'Subscription records are not available.'
         return result
@@ -42,7 +42,15 @@ def subscription_details(db, user):
     if sub.status != 'active' or expired or sub.start_date > now:
         result['note'] = 'Last recorded subscription. No current credit allocation is shown.'
         return result
-    if sub.plan_kind not in ('basic', 'trial', 'pro') or not available(db, CreditTransaction):
+    if sub.plan_kind in ('starter', 'growth', 'unlimited') or (user.role == 'user' and sub.plan_kind == 'pro'):
+        from app.services.paid_credit_service import proof
+        from fastapi import HTTPException
+        try:
+            proof(db, sub, now)
+        except HTTPException:
+            result['note'] = 'Verified paid allocation is unavailable.'
+            return result
+    if sub.plan_kind not in ('basic', 'trial', 'pro', 'starter', 'growth', 'unlimited') or not available(db, CreditTransaction):
         result['note'] = 'Credit ledger is not available.'
         return result
     if sub.plan_kind == 'trial' and sub.end_date is None:
@@ -84,8 +92,19 @@ def payment_details(db, user, page):
             .join(SubscriptionPlan, SubscriptionPlan.id == Subscription.plan_id)
             .where(Subscription.user_id == user.id, SubscriptionPlan.user_role == user.role,
                    Subscription.id.in_([r.subscription_id for r in rows]))).all())
+    checkouts = {}
+    checkout_plans = {}
+    if rows and available(db, PaymentCheckout):
+        checkouts = {c.payment_id: c for c in db.scalars(select(PaymentCheckout).where(
+            PaymentCheckout.user_id == user.id, PaymentCheckout.payment_id.in_([r.id for r in rows])))}
+        if checkouts and available(db, SubscriptionPlan):
+            checkout_plans = dict(db.execute(select(SubscriptionPlan.id, SubscriptionPlan.name).where(
+                SubscriptionPlan.user_role == user.role,
+                SubscriptionPlan.id.in_([c.plan_id for c in checkouts.values()]))).all())
     result.update(available=True, total=total, items=[dict(
-        record_id=r.id, transaction_id=None, date=r.created_at,
-        amount=str(r.amount) if r.amount is not None else None, currency=None,
-        method=None, plan=names.get(r.subscription_id), status=r.status) for r in rows])
+        record_id=r.id, role=user.role, subscription_id=r.subscription_id,
+        transaction_id=checkouts[r.id].provider_payment_id if r.id in checkouts else None, date=r.created_at,
+        amount=str(r.amount) if r.amount is not None else None, currency=checkouts[r.id].currency.upper() if r.id in checkouts else None,
+        method=None, provider='stripe' if r.id in checkouts else None,
+        plan=names.get(r.subscription_id) or (checkout_plans.get(checkouts[r.id].plan_id) if r.id in checkouts else None), status=r.status) for r in rows])
     return result

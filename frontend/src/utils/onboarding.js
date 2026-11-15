@@ -10,6 +10,7 @@ export function onboardingDestination(status, path) {
   if (status === 'completed' && (
     [
       '/owner/notifications',
+      '/owner/share-links',
       '/owner/live-pose',
       '/owner/profile',
       '/owner/settings',

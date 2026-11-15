@@ -1,5 +1,5 @@
 export function activationDisabled(plan, status) {
-  return !plan.activation_available || plan.code === 'pro' || !status ||
+  return !plan.activation_available || !['basic', 'trial'].includes(plan.code) || !status ||
     (plan.code === 'trial' && !status.trial_available) ||
     (plan.code === 'basic' && ['basic', 'trial'].includes(status.plan));
 }

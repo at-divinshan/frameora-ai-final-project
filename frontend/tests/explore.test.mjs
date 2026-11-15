@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import {readFile,access,mkdtemp,rm} from 'node:fs/promises';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {build} from 'esbuild';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {MemoryRouter} from 'react-router-dom';
+import {exploreSamples,getExploreSample,filterExploreSamples,samplePlan} from '../src/data/exploreSamples.js';
+const dir=await mkdtemp(path.join(process.cwd(),'tests/.explore-'));
+try {
+  const outfile=path.join(dir,'test.mjs');
+  await build({stdin:{contents:`export * from './src/utils/exploreFlow'; export {ExploreCard} from './src/pages/user/Explore'; export {mapPlanToFormValues,validatePhotographyPlanForm,buildPlanPreferences} from './src/components/photography/PlanForm'; export {default as api} from './src/services/api'; export {createPlan} from './src/services/planService';`,resolveDir:process.cwd()},bundle:true,platform:'node',format:'esm',packages:'external',jsx:'automatic',outfile,loader:{'.css':'empty'},define:{'import.meta.env':'{}'}});
+  const mod=await import(pathToFileURL(outfile));
+  assert.equal(exploreSamples.length,10);assert.equal(new Set(exploreSamples.map(s=>s.id)).size,10);
+  assert.equal(exploreSamples.filter(s=>s.available).length,9);
+  assert.equal(getExploreSample('beach-01'),null);assert.equal(getExploreSample('../../secret'),null);
+  for (const sample of exploreSamples.filter(s=>s.available)) {
+    await access(path.join('public',sample.image));
+    const values=mod.mapPlanToFormValues(samplePlan(sample));
+    assert.deepEqual(mod.validatePhotographyPlanForm(values),{});
+    const prefs=mod.buildPlanPreferences(values);
+    assert.ok(prefs.extra_instructions.includes(sample.pose));assert.ok(prefs.extra_instructions.includes(sample.camera));
+    assert.equal(Number(values.people_count),sample.people);
+    const html=renderToStaticMarkup(React.createElement(MemoryRouter,null,React.createElement(mod.ExploreCard,{sample})));
+    assert.ok(html.includes(sample.image));assert.ok(html.includes('Try with AI'));assert.ok(html.includes(`/user/plans/create?sample=${sample.id}`));
+  }
+  assert.equal(filterExploreSamples('','Birthday').length,2);
+  assert.equal(filterExploreSamples('  TASSEL  ')[0].id,'graduation-01');assert.equal(filterExploreSamples('no-match-xyz').length,0);
+  const missing=renderToStaticMarkup(React.createElement(MemoryRouter,null,React.createElement(mod.ExploreCard,{sample:exploreSamples.at(-1)})));
+  assert.ok(!missing.includes('<img'));assert.ok(!missing.includes('Try with AI'));
+  const data=new Map();const storage={getItem:key=>data.get(key)||null,setItem:(key,val)=>data.set(key,val)};
+  const defaults=mod.mapPlanToFormValues(samplePlan(exploreSamples[0]));
+  mod.writeSession(storage,'draft',{values:{...defaults,location:'My edited location'},mode:'scene'});
+  assert.equal(mod.readDraft(storage,'draft',defaults).values.location,'My edited location');
+  assert.equal(mod.readDraft(storage,'draft',defaults).mode,'scene');
+  storage.setItem('draft','broken');assert.deepEqual(mod.readDraft(storage,'draft',defaults).values,defaults);
+  assert.equal(mod.writeSession(null,'draft',{}),false);
+  const key=mod.planContextKey(1,7);mod.writeSession(storage,key,{sampleId:'birthday-01',mode:'scene'});
+  assert.equal(mod.readPlanContext(storage,1,7).mode,'scene');assert.equal(mod.readPlanContext(storage,2,7),null);
+  assert.equal(mod.validPlanId('https://evil'),null);
+  let fetched;
+  const file=await mod.loadSampleScene('birthday-01',undefined,async (url,options)=>{fetched={url,options};return {ok:true,blob:async()=>new Blob(['mock-png'],{type:'image/png'})};});
+  assert.equal(fetched.url,'/images/explore/birthday-01.png');assert.equal(fetched.options.redirect,'error');assert.equal(file.name,'birthday-01.png');
+  await assert.rejects(mod.loadSampleScene('https://evil',undefined,()=>{throw new Error('should never fetch');}),/unavailable/);
+  await assert.rejects(mod.loadSampleScene('birthday-01',undefined,async()=>({ok:false})),/could not be loaded/);
+  await assert.rejects(mod.loadSampleScene('birthday-01',undefined,async()=>({ok:true,blob:async()=>new Blob(['html'],{type:'text/html'})})),/PNG/);
+  await assert.rejects(mod.loadSampleScene('birthday-01',undefined,async()=>({ok:true,blob:async()=>new Blob([new Uint8Array(5*1024*1024+1)],{type:'image/png'})})),/5 MiB/);
+  let request;mod.api.defaults.adapter=async config=>{request=config;return {data:{id:7},status:201,headers:{},config};};
+  const plan=samplePlan(exploreSamples[0]);assert.equal((await mod.createPlan(plan)).id,7);assert.equal(request.url,'/plans');assert.deepEqual(JSON.parse(request.data),plan);
+  const routes=await readFile('src/routes/AppRoutes.jsx','utf8');assert.match(routes,/path="\/user\/explore"/);assert.doesNotMatch(routes,/path="\/(owner|admin)\/explore"/);
+  console.log('Explore: catalogue/assets, filters, cards, editable prefills, drafts, scoped context, safe scene loading and existing plan API checks passed.');
+} finally {await rm(dir,{recursive:true,force:true});}

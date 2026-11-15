@@ -2,12 +2,17 @@ import api from "./api";
 
 export async function getFreeGenerationEligibility() {
   const { data } = await api.get("/ai/free-generation/eligibility");
-  return data;
+  let paid = null;
+  try { paid = (await api.get("/user/payments/subscription")).data; }
+  catch (error) { if (error.response?.status !== 503) throw error; }
+  return { ...data, paid, generation_available: paid?.plan && paid.plan !== 'free'
+    ? paid.paid_generation_available : data.free_request_available };
 }
-export async function generateImages({ planId, description = "", reference, backgroundReference }) {
+export async function generateImages({ planId, description = "", reference, backgroundReference, idempotencyKey }) {
   const body = new FormData();
   body.append("plan_id", planId);
   body.append("description", description);
+  if (idempotencyKey) body.append("idempotency_key", idempotencyKey);
   if (reference) body.append("reference", reference);
   if (backgroundReference) body.append("background_reference", backgroundReference);
   const { data } = await api.post("/ai/generations", body, {

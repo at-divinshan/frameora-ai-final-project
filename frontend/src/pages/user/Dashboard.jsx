@@ -31,7 +31,7 @@ export default function Dashboard() {
           <Images size={30} strokeWidth={1.5} aria-hidden="true" />
           <p>No photography plans available yet.</p>
         </div>
-        <p id="dashboard-unavailable-note" className="user-dashboard-availability-note">Explore and search are coming soon.</p>
+        <p id="dashboard-unavailable-note" className="user-dashboard-availability-note"><Link to="/user/explore">Explore photography inspiration</Link> and find a starting point for your next plan.</p>
       </section>
     </DashboardLayout>
   );

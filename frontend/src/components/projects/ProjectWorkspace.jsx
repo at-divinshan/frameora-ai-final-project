@@ -1,3 +1,4 @@
+import { belowLimit, limitLabel } from '../../utils/ownerLimits';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { phaseLabel } from '../ai/ProjectFolders';
@@ -63,7 +64,7 @@ export default function ProjectWorkspace({ project, onRestriction }) {
   }
   async function createShare(event) {
     event.preventDefault();
-    if (!complete.some(g => String(g.id) === generationId) || usage == null || usage >= data.entitlement.max_share_links) return;
+    if (!complete.some(g => String(g.id) === generationId) || usage == null || !belowLimit(usage, data.entitlement.max_share_links)) return;
     await mutate(async () => {
       const links = await getProjectShareLinks(project.id);
       const existing = links.find(link => String(link.generation_id) === generationId && shareLinkStatus(link) === 'Active');
@@ -100,9 +101,9 @@ export default function ProjectWorkspace({ project, onRestriction }) {
         <Link className="account-secondary" to="/owner/ai/gallery">Open studio gallery</Link>
       </section>
       <section id="share-customer" className="account-card"><h2>Share with Customer</h2><p>Only completed image batches can be shared. Your customer signs in to view their gallery.</p>
-        <p>Subscription usage: {usage ?? 'Unavailable'} / {data.entitlement.max_share_links} active share links across all projects.</p>
+        <p>Subscription usage: {usage ?? 'Unavailable'} / {limitLabel(data.entitlement.max_share_links)} active share links across all projects.</p>
         {usageError && <p role="alert">{usageError}</p>}
-        {usage != null && usage >= data.entitlement.max_share_links && <p>Your share-link limit has been reached.</p>}
+        {usage != null && !belowLimit(usage, data.entitlement.max_share_links) && <p>Your share-link limit has been reached.</p>}
         <Link className="account-secondary" to="/owner/subscription">Manage subscription</Link>
         {project.is_editable && <form onSubmit={createShare}>
           <div className="form-field"><label htmlFor="share-generation">Project image batch</label>
@@ -110,7 +111,7 @@ export default function ProjectWorkspace({ project, onRestriction }) {
               <option value="">Choose a completed generation</option>{complete.map(g => <option key={g.id} value={g.id}>{phaseLabel(g)} · Plan #{g.plan_id}</option>)}
             </select></div>
           <div className="form-field"><label htmlFor="share-expiry">Expiration (optional, local time)</label><div className="input-wrapper"><input id="share-expiry" type="datetime-local" value={expiresAt} disabled={busy} onChange={e => setExpiresAt(e.target.value)} /></div></div>
-          <button className="owner-gradient-button" disabled={busy || usage == null || usage >= data.entitlement.max_share_links || !complete.some(g => String(g.id) === generationId) || data.links.some(link => String(link.generation_id) === generationId && shareLinkStatus(link) === 'Active')}>Create Share Link</button>
+          <button className="owner-gradient-button" disabled={busy || usage == null || !belowLimit(usage, data.entitlement.max_share_links) || !complete.some(g => String(g.id) === generationId) || data.links.some(link => String(link.generation_id) === generationId && shareLinkStatus(link) === 'Active')}>Create Share Link</button>
         </form>}
         {!data.links.length && <p>No share links yet. Choose a completed batch to create one.</p>}
         {data.links.map(link => <article className="project-linked-plan" key={link.id}>

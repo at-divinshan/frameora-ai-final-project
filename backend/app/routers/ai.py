@@ -37,6 +37,7 @@ def generate_images(
     response: Response,
     plan_id: int = Form(..., gt=0),
     description: str = Form("", max_length=2000),
+    idempotency_key: str | None = Form(None, min_length=16, max_length=128),
     reference: UploadFile | None = File(None),
     reference_photo: UploadFile | None = File(None),
     background_reference: UploadFile | None = File(None),
@@ -48,7 +49,7 @@ def generate_images(
     normalized = _normalize_reference_fields(reference, reference_photo)
     background = _normalize_reference(background_reference)
     return ai_service.generate(db, user, plan_id=plan_id, description=description.strip(),
-                               reference=normalized, background_reference=background)
+                               reference=normalized, background_reference=background, idempotency_key=idempotency_key)
 
 
 

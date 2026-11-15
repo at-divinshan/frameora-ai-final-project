@@ -1,3 +1,4 @@
+import { limitLabel } from '../../utils/ownerLimits';
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getProject } from "../../services/projectService";
@@ -86,7 +87,10 @@ export function OwnerEntitlementSummary({ entitlement, contract = OWNER_GENERATI
   const planLabel = {
     basic: "Free Basic",
     trial: "Free Trial",
-    pro: "Paid Pro",
+    pro: "Paid Pro (legacy)",
+    starter: "Starter",
+    growth: "Growth",
+    unlimited: "Unlimited",
   }[entitlement.plan] || "No active plan";
   const date = entitlement.subscription_end || entitlement.period_end;
   return <section className="account-card owner-ai-entitlement" aria-label="Owner AI entitlement">
@@ -102,7 +106,7 @@ export function OwnerEntitlementSummary({ entitlement, contract = OWNER_GENERATI
     {!entitlement.generation_allowed && entitlement.reason === "insufficient_credits" &&
       <p className="user-plan-message">At least {entitlement.batch_cost} credits are required for another batch.</p>}
     {!entitlement.generation_allowed && entitlement.reason === "paid_activation_disabled" &&
-      <p className="user-plan-message">Paid Pro generation is unavailable until checkout and activation are enabled.</p>}
+      <p className="user-plan-message">Paid generation is unavailable until checkout and activation are enabled.</p>}
     {!entitlement.generation_allowed && entitlement.reason === "subscription_required" &&
       <p className="user-plan-message">Choose an owner subscription before generating images.</p>}
     {!entitlement.generation_allowed && entitlement.reason === "onboarding_required" &&
@@ -114,7 +118,7 @@ export function OwnerEntitlementSummary({ entitlement, contract = OWNER_GENERATI
       "onboarding_required",
     ].includes(entitlement.reason) &&
       <p className="user-plan-message">Generation is currently unavailable under your owner subscription.</p>}
-    <p className="owner-ai-limit-summary">Limits: {entitlement.max_projects} editable projects · {entitlement.max_share_links} active share links.</p>
+    <p className="owner-ai-limit-summary">Limits: {limitLabel(entitlement.max_projects)} editable projects · {limitLabel(entitlement.max_share_links)} active share links.</p>
   </section>;
 }
 

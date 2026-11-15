@@ -30,3 +30,16 @@ def owner_detail(owner_id: int = Path(ge=1, le=2147483647), db: Session = Depend
 def owner_photo(owner_id: int = Path(ge=1, le=2147483647), db: Session = Depends(get_db)):
     return Response(studio_photo_service.read(db, admin_service.owner(db, owner_id)), media_type='image/png',
         headers={'Cache-Control':'no-store','Pragma':'no-cache','X-Content-Type-Options':'nosniff'})
+
+# Inherits Admin JWT/RBAC and no-store dependencies from this router.
+from typing import Literal
+from app.schemas.admin_payments import PaymentFilters
+from app.services import admin_payment_service
+
+@router.get('/payments')
+def payments(filters: Annotated[PaymentFilters, Query()], db: Session = Depends(get_db)):
+    return admin_payment_service.listing(db, filters)
+
+@router.get('/payments/{kind}/{identifier}')
+def payment_detail(kind: Literal['payment','checkout'], identifier: int = Path(gt=0), db: Session = Depends(get_db)):
+    return admin_payment_service.detail(db, kind, identifier)

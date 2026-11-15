@@ -12,14 +12,15 @@ try {
     bundle: true, format: "esm", platform: "node", packages: "external", outfile,
     define: { "import.meta.env": JSON.stringify({ VITE_API_URL: "http://localhost:8000" }) },
   });
-  const { api, setAccessToken, generateImages, getGeneratedImage, getGenerations, generationError } = await import(pathToFileURL(outfile));
+  const { api, setAccessToken, generateImages, getGeneratedImage, getGenerations, generationError, getFreeGenerationEligibility } = await import(pathToFileURL(outfile));
   const requests = [];
   api.defaults.adapter = async (config) => {
     requests.push(config);
     return {data: {id: 1}, status: 200, statusText: "OK", headers: {}, config};
   };
   setAccessToken("test-session-only");
-  await generateImages({planId: 7, description: "Portrait in a garden", reference: new Blob(["test"], {type:"image/png"}), backgroundReference: new Blob(["scene"], {type:"image/webp"})});
+  await generateImages({idempotencyKey: "test-request-key-1234", planId: 7, description: "Portrait in a garden", reference: new Blob(["test"], {type:"image/png"}), backgroundReference: new Blob(["scene"], {type:"image/webp"})});
+  assert.equal(requests[0].data.get("idempotency_key"), "test-request-key-1234");
   assert.equal(requests[0].url, "/ai/generations");
   assert.equal(requests[0].data.get("plan_id"), "7");
   assert.equal(requests[0].data.get("description"), "Portrait in a garden");
@@ -88,6 +89,15 @@ try {
   assert.ok(!escaped.includes("<script>"));
   const legacy = renderToStaticMarkup(React.createElement(Card, {image: {id: 2}, index: 1}));
   assert.ok(legacy.includes("guidance was not saved"));
+  api.defaults.adapter = async config => ({data: config.url.includes('eligibility')
+    ? {free_request_available:false,free_request_status:'used'}
+    : {plan:'starter',remaining_credits:36,paid_generation_available:true}, status:200,headers:{},config});
+  assert.equal((await getFreeGenerationEligibility()).generation_available,true);
+  api.defaults.adapter = async config => {
+    if (config.url.includes('subscription')) throw {response:{status:503}};
+    return {data:{free_request_available:true},status:200,headers:{},config};
+  };
+  assert.equal((await getFreeGenerationEligibility()).generation_available,true);
   let calls = 0;
   api.defaults.adapter = async () => { calls++; throw new Error("timeout"); };
   await assert.rejects(generateImages({planId:7,description:"Portrait"}));

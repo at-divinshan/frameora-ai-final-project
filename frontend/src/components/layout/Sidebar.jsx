@@ -4,7 +4,7 @@ import { Camera, Bell, ClipboardList, Compass, CreditCard, Heart, House, LogOut,
 import FrameoraLogo from "../common/FrameoraLogo";
 
 const upcomingItems = [
-  { label: "Explore", icon: Compass },
+  { label: "Explore", icon: Compass, path: "/user/explore" },
   { label: "My Plans", icon: ClipboardList },
   { label: "My Favorites", icon: Heart },
   { label: "Notifications", icon: Bell, path: "/user/notifications" },

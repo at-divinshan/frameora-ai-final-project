@@ -7,7 +7,7 @@ class ActivationRequest(BaseModel):
     idempotency_key: str = Field(min_length=16, max_length=128, pattern=r'^[A-Za-z0-9_-]+$')
 
 class Entitlements(BaseModel):
-    plan: Literal['basic', 'trial'] | None
+    plan: Literal['basic', 'trial', 'starter', 'growth', 'unlimited'] | None
     remaining_credits: int
     trial_available: bool
     period_start: datetime | None

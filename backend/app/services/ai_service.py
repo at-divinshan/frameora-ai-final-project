@@ -21,6 +21,7 @@ from app.schemas.ai import ImageGuidance
 from pydantic import ValidationError
 from app.services import ai_image_storage as storage
 from app.services import free_generation_service as allowance
+from app.services import user_paid_generation as paid
 from app.services import pollinations_service as provider
 
 logger = logging.getLogger(__name__)
@@ -68,7 +69,7 @@ def list_generations(db: Session, user: User, *, before: int | None = None) -> l
     )]
 
 
-def generate(db: Session, user: User, *, plan_id: int, description: str, reference: bytes | None, background_reference: bytes | None = None):
+def generate(db: Session, user: User, *, plan_id: int, description: str, reference: bytes | None, background_reference: bytes | None = None, idempotency_key: str | None = None):
     provider.require_reference_support(background_reference)
     provider.require_configured()
     plan = plan_repository.find_for_user(db, user.id, plan_id)
@@ -78,8 +79,14 @@ def generate(db: Session, user: User, *, plan_id: int, description: str, referen
     shots = planned_shots(plan)
     # Reconcile terminal work left by a lost finalization acknowledgement. Pending
     # work is never expired or released based on age alone.
-    allowance.reconcile_interrupted_request(db, user_id=user.id)
-    reservation = allowance.reserve_free_request(db, user, plan_id=plan_id, quality="standard")
+    reservation = paid.reserve(db, user, plan_id=plan_id, prompt=prompt, reference=reference,
+        background_reference=background_reference, idempotency_key=idempotency_key)
+    is_paid = reservation is not None
+    if is_paid and reservation.replay:
+        return generation_view(db, db.get(AIGeneration, reservation.generation_id))
+    if not is_paid:
+        allowance.reconcile_interrupted_request(db, user_id=user.id)
+        reservation = allowance.reserve_free_request(db, user, plan_id=plan_id, quality="standard")
     keys = []
     persistence_started = False
     stage = "provider"
@@ -107,8 +114,10 @@ def generate(db: Session, user: User, *, plan_id: int, description: str, referen
         stage = "database_finalization"
         lock_profile(db, user.id)
         generation = db.get(AIGeneration, reservation.generation_id)
-        if generation is None or generation.status != allowance.PENDING_STATUS:
+        if generation is None or generation.status != (paid.PENDING if is_paid else allowance.PENDING_STATUS):
             raise HTTPException(409, "The generation is no longer active.")
+        if is_paid:
+            paid.settle(db, user, reservation)
         saved_guidance = {}
         for key, shot in zip(keys, shots):
             db.add(AIResult(generation_id=generation.id))
@@ -123,7 +132,10 @@ def generate(db: Session, user: User, *, plan_id: int, description: str, referen
         generation.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.flush()  # SessionLocal disables autoflush; completion must see all rows.
         persistence_started = True
-        allowance.complete_free_request(db, user, reservation=reservation)
+        if is_paid:
+            db.commit()
+        else:
+            allowance.complete_free_request(db, user, reservation=reservation)
         return generation_view(db, generation)
     except Exception as error:
         if stage == "database_finalization" and not persistence_started:
@@ -140,7 +152,10 @@ def generate(db: Session, user: User, *, plan_id: int, description: str, referen
                     storage.delete_image(key)
                 except OSError:
                     logger.warning("Private AI image cleanup deferred.")
-            allowance.release_failed_request(db, user, reservation=reservation)
+            if is_paid:
+                paid.fail(db, user, reservation)
+            else:
+                allowance.release_failed_request(db, user, reservation=reservation)
         else:
             # A lost COMMIT acknowledgement can mean success. Keep immutable files
             # and the claim; never release it or delete potentially committed media.
@@ -154,7 +169,7 @@ def generate(db: Session, user: User, *, plan_id: int, description: str, referen
             raise HTTPException(503, "Generation finalization could not be confirmed. Check your gallery before trying again.") from None
         if isinstance(error, HTTPException):
             raise
-        raise HTTPException(503, "Generation could not be saved. Your free request has not been used.") from None
+        raise HTTPException(503, "Generation could not be saved. The failed request was released.") from None
 
 
 def get_image(db: Session, user: User, asset_id: int) -> bytes:

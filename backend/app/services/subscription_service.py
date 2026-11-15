@@ -13,6 +13,7 @@ from app.repositories.profile_repository import find_owner_profile, STUDIO_FIELD
 from app.schemas.owner import StudioUpdate
 from app.services.onboarding_service import require_owner
 from app.services.credit_service import balance
+from app.core.owner_plans import catalogue as approved_catalogue, BY_CODE, PAID_CODES
 
 UNAVAILABLE = "Subscriptions are unavailable until the approved database migration is applied."
 
@@ -71,19 +72,26 @@ def plans(db):
         p = result.get(code)
         if (p is None or p.name != name or p.monthly_credits != credits or p.price != price
                 or p.trial_days != days or p.currency != 'LKR'
-                or p.max_projects != max_projects or p.max_share_links != max_links):
+                or ((p.max_projects, p.max_share_links) != (max_projects, max_links)
+                    and not (code == 'trial' and p.max_projects is None and p.max_share_links is None))):
             raise HTTPException(503, "Subscription catalogue is unavailable.")
+    # Recognize only exact approved paid rows; this does not authorize activation.
+    for p in rows:
+        if p.code in PAID_CODES:
+            expected = BY_CODE[p.code]
+            if (p.name == expected.name and p.monthly_credits == expected.credits
+                    and p.price == expected.price and p.currency == 'LKR'
+                    and p.max_projects == expected.max_projects and p.max_share_links == expected.max_share_links
+                    and p.trial_days is None):
+                result[p.code] = p
     return result
 
 
 def catalogue(db, user):
     require_owner(user)
     require_schema(db)
-    available = plans(db)
-    return {'plans': [dict(code=p.code, name=p.name, currency=p.currency, price=str(p.price),
-        credits=p.monthly_credits, credit_period='trial_total' if p.code == 'trial' else 'monthly_anniversary',
-        trial_days=p.trial_days, max_projects=p.max_projects, max_share_links=p.max_share_links,
-        activation_available=p.code in ('basic', 'trial')) for p in (available['basic'], available['trial'], available['pro'])]}
+    plans(db)  # Verify existing free/trial ledger catalogue before offering activation.
+    return approved_catalogue()
 
 
 def clock():
@@ -138,6 +146,8 @@ def snapshot(db, user, action=None, key=None):
         if action == 'trial' and used and not replay:
             raise HTTPException(409, "The free trial has already been used.")
         active = resolve_effective(db, current.id, active, available, now, persist=bool(action))
+        if active and active.plan_kind in PAID_CODES and action:
+            raise HTTPException(409, 'Paid subscriptions cannot be changed through free-plan activation.')
         if active and active.plan_kind == 'pro':
             raise HTTPException(503, "Paid activation is not available.")
         if action == 'basic' and active and active.plan_kind == 'trial':

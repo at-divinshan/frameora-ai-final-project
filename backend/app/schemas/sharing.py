@@ -60,3 +60,7 @@ class SharedGeneration(BaseModel):
     project_id: int
     generation_id: int
     images: list[SharedImage]
+
+class ShareLinkStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    is_active: bool

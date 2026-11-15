@@ -311,6 +311,8 @@ def generate(db, user, *, plan_id, description, reference, idempotency_key,
             raise HTTPException(409, 'This generation is no longer active.')
         if subscriptions.clock() >= generation.created_at + RECOVERY_AFTER:
             raise HTTPException(409, 'Generation recovery deadline elapsed.')
+        from app.services.paid_credit_service import require_settlement
+        require_settlement(db, db.get(Subscription, debit.subscription_id), subscriptions.clock())
         # Ownership and the original debit are rechecked above. Do not move this
         # charge to a newer subscription or period if expiry occurred during work.
         if db.scalar(select(func.count()).select_from(MediaAsset).where(MediaAsset.generation_id == generation.id)):

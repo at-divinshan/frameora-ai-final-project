@@ -31,7 +31,7 @@ class OwnerGenerationPreferences(BaseModel):
 
 
 class OwnerEntitlements(BaseModel):
-    plan: Literal['basic', 'trial', 'pro'] | None
+    plan: Literal['basic', 'trial', 'pro', 'starter', 'growth', 'unlimited'] | None
     status: Literal['active', 'unavailable']
     previous_subscription_expired: bool
     source_status: Literal['active', 'expired', 'unavailable']
@@ -46,8 +46,8 @@ class OwnerEntitlements(BaseModel):
     batch_cost: int
     reason: str | None
     trial_available: bool
-    max_projects: int
-    max_share_links: int
+    max_projects: int | None
+    max_share_links: int | None
 
 
 class OwnerGenerationResponse(GenerationResponse):

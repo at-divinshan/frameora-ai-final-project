@@ -1,0 +1,31 @@
+import { build } from 'esbuild';
+import { mkdtemp, rm } from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import assert from 'node:assert/strict';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { belowLimit, limitLabel } from '../src/utils/ownerLimits.js';
+assert.equal(belowLimit(100000, null), true);
+assert.equal(belowLimit(3,3), false);
+assert.equal(belowLimit(0,undefined), false);
+assert.equal(limitLabel(null), 'Unlimited');
+assert.equal(limitLabel(undefined), 'Unavailable');
+const temp = await mkdtemp(path.join(process.cwd(), 'tests/.owner-plans-'));
+try {
+ const outfile=path.join(temp,'checks.mjs');
+ await build({stdin:{contents:`export {PlanCards} from './src/pages/owner/Subscription';export {activationDisabled} from './src/utils/subscription';`,resolveDir:process.cwd()},bundle:true,format:'esm',platform:'node',packages:'external',jsx:'automatic',loader:{'.css':'empty'},define:{'import.meta.env':'{}'},outfile});
+ const {PlanCards,activationDisabled}=await import(pathToFileURL(outfile));
+ const plans=[{code:'basic',name:'Free Basic',price:0,credits:10,max_projects:2,max_share_links:3,activation_available:true},{code:'trial',name:'Free Trial',price:0,credits:100,max_projects:null,max_share_links:null,trial_days:14,credit_period:'trial_total',activation_available:true},...['starter','growth','unlimited'].map((code,i)=>({code,name:code,price:[1500,2500,3500][i],credits:[100,250,500][i],max_projects:[10,30,null][i],max_share_links:[20,60,null][i],activation_available:false}))].map(p=>({...p,currency:'LKR'}));
+ const status={plan:'basic',trial_available:true};
+ const html=renderToStaticMarkup(React.createElement(PlanCards,{plans,status,busy:'',activate:()=>{throw Error('No activation during rendering');}}));
+ assert.match(html,/Unlimited active\/editable projects/);
+ assert.match(html,/Unlimited active share links/);
+ assert.match(html,/Start Free Trial/);
+ assert.equal((html.match(/Payment setup pending<\/button>/g)||[]).length,3);
+ assert.match(html,/verified paid period/);
+ for(const p of plans.slice(2)) assert.equal(activationDisabled({...p,activation_available:true},status),true);
+ assert.equal(activationDisabled(plans[1],status),false);
+ assert.equal(activationDisabled(plans[1],{...status,trial_available:false}),true);
+ console.log('Owner plans: unlimited labels, explicit trial, paid prices and fail-closed activation passed.');
+} finally {await rm(temp,{recursive:true,force:true});}

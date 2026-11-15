@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Response, status, Query
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, require_roles
 from app.database.connection import get_db
 from app.models.user import User
 from app.routers.owner import owner_request
-from app.schemas.sharing import ShareLinkCreate, ShareLinkCreated, ShareLinkRead, SharedGeneration
+from app.schemas.sharing import ShareLinkCreate, ShareLinkCreated, ShareLinkRead, SharedGeneration, ShareLinkStatusUpdate
 from app.services import share_service
 
 router = APIRouter(tags=["Sharing"])
@@ -90,3 +90,19 @@ def shared_image(
             "Content-Disposition": 'inline; filename="frameora-preview.jpg"',
         },
     )
+
+@router.get('/owner/share-links', dependencies=[Depends(owner_request)])
+def owner_share_links(response: Response, project_id: int | None = Query(None, gt=0), before: int | None = Query(None, gt=0),
+                      user: User = Depends(owner_identity), db: Session = Depends(get_db)):
+    response.headers['Cache-Control'] = 'private, no-store'
+    return share_service.management_links(db, user, project_id=project_id, before=before)
+
+
+
+@router.patch('/owner/projects/{project_id}/share-links/{link_id}', response_model=ShareLinkRead,
+              dependencies=[Depends(owner_request)])
+def update_share_link_status(project_id: int, link_id: int, data: ShareLinkStatusUpdate,
+                             user: User = Depends(owner_identity), db: Session = Depends(get_db)):
+    if data.is_active:
+        return share_service.activate_link(db, user, project_id, link_id)
+    return share_service.deactivate_link(db, user, project_id, link_id)

@@ -55,10 +55,16 @@ class Settings:
         )
 
 
-def load_settings() -> Settings:
+def configuration_values() -> dict:
+    """Read backend/.env literally; process environment (including empty values) wins."""
     env_path = Path(__file__).resolve().parents[2] / ".env"
     # Keep literal password characters intact; environment variables take precedence.
     file_values = dotenv_values(env_path, interpolate=False)
+    return {**file_values, **os.environ}
+
+
+def load_settings() -> Settings:
+    file_values = configuration_values()
     names = ("DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD")
     values = {name: os.environ.get(name, file_values.get(name)) for name in names}
     missing = [name for name, value in values.items() if value is None or value == ""]

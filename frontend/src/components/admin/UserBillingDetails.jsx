@@ -17,10 +17,13 @@ export default function UserBillingDetails({ subscription, payments, onPaymentPa
   {subscription?.note && <p>{subscription.note}</p>}
   <h3>Payment history</h3>
   {!payments?.available ? <p>Not available</p> : payments.total === 0 ? <p>No payment history</p> : <>
-   <p>Currency, payment method and gateway transaction ID are not recorded by the current payment system.</p>
+   <p>Only recorded payment information is shown. Payment method details are not currently recorded.</p>
    {payments.items.length === 0 && <p>No payments on this page.</p>}
    {payments.items.map(payment => <article className="account-card" key={payment.record_id}>
     <dl className="account-details">
+     <div><dt>Account role</dt><dd>{value(payment.role)}</dd></div>
+     <div><dt>Subscription ID</dt><dd>{value(payment.subscription_id)}</dd></div>
+     <div><dt>Payment provider</dt><dd>{value(payment.provider)}</dd></div>
      <div><dt>Payment record ID</dt><dd>{payment.record_id}</dd></div>
      <div><dt>Transaction ID</dt><dd>{value(payment.transaction_id)}</dd></div>
      <div><dt>Payment date</dt><dd>{date(payment.date)}</dd></div>

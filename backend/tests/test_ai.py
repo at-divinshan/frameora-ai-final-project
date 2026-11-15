@@ -50,6 +50,9 @@ class GenerationTests(unittest.TestCase):
             with Session(self.engine, expire_on_commit=False, autoflush=False) as db:
                 yield db
         app.dependency_overrides[get_db] = isolated_db
+        # These tests isolate the unchanged free workflow; paid routing has its own suite.
+        paid_patch = patch.object(ai_service.paid, "reserve", return_value=None)
+        paid_patch.start(); self.addCleanup(paid_patch.stop)
         AIResult.__table__.create(self.engine)
         MediaAsset.__table__.create(self.engine)
         with Session(self.engine) as db:

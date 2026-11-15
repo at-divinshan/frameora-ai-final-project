@@ -1,5 +1,7 @@
 """Authenticated Studio Owner onboarding; no public studio data or plan activation."""
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
@@ -21,7 +23,18 @@ def owner_request(request: Request, response: Response):
         and len(request.query_params.multi_items()) == 1
         and request.query_params.get("before") is not None
     )
-    if request.query_params and not history_page:
+    management_page = (
+        request.method == 'GET' and request.url.path == '/owner/share-links'
+        and set(request.query_params) <= {'project_id', 'before'}
+        and all(len(request.query_params.getlist(key)) == 1 for key in request.query_params)
+    )
+    project_gallery_page = (
+        request.method == 'GET'
+        and re.fullmatch(r'/owner/projects/[0-9]+/ai/generations', request.url.path)
+        and len(request.query_params.multi_items()) == 1
+        and request.query_params.get('before') is not None
+    )
+    if request.query_params and not (history_page or management_page or project_gallery_page):
         raise HTTPException(422, "Query parameters are not supported.")
 
 

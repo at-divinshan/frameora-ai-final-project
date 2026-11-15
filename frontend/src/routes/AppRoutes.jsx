@@ -1,6 +1,7 @@
 import AdminUsers from "../pages/admin/Users";
 import Notifications from "../pages/shared/Notifications";
 import LivePoseGuide from "../pages/shared/LivePoseGuide";
+import SharedLinks from "../pages/owner/SharedLinks";
 import SharedGallery from "../pages/shared/SharedGallery";
 import { shareReturnFromSearch } from "../utils/shareReturn";
 import AIGenerator from "../pages/user/AIGenerator";
@@ -19,6 +20,7 @@ import ForgotPassword from "../pages/auth/ForgotPassword";
 import GoogleCallback from "../pages/auth/GoogleCallback";
 import GoogleLink from "../pages/auth/GoogleLink";
 import UserDashboard from "../pages/user/Dashboard";
+import Explore from "../pages/user/Explore";
 import CreatePlan from "../pages/user/CreatePlan";
 import EditPlan from "../pages/user/EditPlan";
 import MyPlans from "../pages/user/MyPlans";
@@ -32,6 +34,8 @@ import OwnerAIResults from "../pages/owner/AIResults";
 import StudioSetup from "../pages/owner/StudioSetup";
 import SubscriptionSelection from "../pages/owner/Subscription";
 import OwnerAccountHistory from "../pages/owner/AccountHistory";
+import AdminPayments from '../pages/admin/Payments';
+import AdminSubscriptions from '../pages/admin/Subscriptions';
 import AdminDashboard from "../pages/admin/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import RoleRoute from "./RoleRoute";
@@ -84,6 +88,7 @@ export default function AppRoutes() {
           <Route key={role} element={<RoleRoute role={role} />}>
             {role === "owner" ? (
               <Route element={<OwnerOnboardingRoute />}>
+                <Route path="/owner/share-links" element={<SharedLinks />} />
                 <Route path="/owner/notifications" element={<Notifications />} />
                 <Route path="/owner/live-pose" element={<LivePoseGuide />} />
                 <Route path="/owner/projects" element={<Projects />} />
@@ -101,6 +106,8 @@ export default function AppRoutes() {
             ) : (
               <>
                 {role === "admin" && <Route path="/admin/users" element={<AdminUsers />} />}
+                {role === "admin" && <Route path="/admin/payments" element={<AdminPayments />} />}
+                {role === "admin" && <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />}
                 <Route path={`/${role}/profile`} element={role === "user" ? <UserProfile /> : <AdminProfile />} />
                 <Route path={`/${role}/settings`} element={role === "user" ? <UserSettings /> : <AdminSettings />} />
                 <Route path={path} element={role === "user" ? <UserDashboard /> : <AdminDashboard />} />
@@ -110,6 +117,7 @@ export default function AppRoutes() {
                     <Route path="/user/live-pose" element={<LivePoseGuide />} />
                     <Route path="/user/ai" element={<AIGenerator />} />
                     <Route path="/user/gallery" element={<AIResults />} />
+                    <Route path="/user/explore" element={<Explore />} />
                     <Route path="/user/plans/create" element={<CreatePlan />} />
                     <Route path="/user/plans/:planId/edit" element={<EditPlan />} />
                     <Route path="/user/plans" element={<MyPlans />} />

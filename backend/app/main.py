@@ -11,6 +11,10 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.ai_generation import AIGeneration
+# Register payment mappings at startup, independently of the disabled payment
+# runtime. Declarative imports only populate metadata; they never execute DDL.
+from app.models.payment import Payment
+from app.models.payment_preparation import PaymentCheckout, PaymentWebhookEvent, PaidCreditAllocation
 from app.middleware.ai_upload_limit import AIUploadLimit
 from app.middleware.live_pose_limit import LivePoseUploadLimit
 from app.core.config import settings
@@ -26,6 +30,7 @@ from app.routers.users import router as users_router
 from app.routers.owner import router as owner_router
 from app.routers.user_subscriptions import router as user_subscriptions_router
 from app.routers.subscriptions import router as subscriptions_router
+from app.routers.payments import router as payments_router
 from app.routers.plans import router as plans_router
 from app.routers.ai import router as ai_router
 from app.routers.owner_ai import router as owner_ai_router
@@ -110,6 +115,7 @@ app.include_router(google_auth_router)
 app.include_router(users_router)
 app.include_router(owner_router)
 app.include_router(subscriptions_router)
+app.include_router(payments_router)
 app.include_router(user_subscriptions_router)
 app.include_router(plans_router)
 app.include_router(ai_router)

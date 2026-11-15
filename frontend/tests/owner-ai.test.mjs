@@ -162,7 +162,7 @@ try {
     }
     const html = renderToStaticMarkup(React.createElement(ui.OwnerCustomization, {
       values: { ...defaults, outfit_mode: 'custom', background_mode: 'custom' }, disabled: true,
-      errors: { outfit_details: 'Add Outfit Details' },
+      errors: { outfit_details: 'Add Outfit Details' }, onChange() {},
     }));
     for (const [key, label] of [...ui.OWNER_PREFERENCE_MODES, ...ui.OWNER_PREFERENCE_TEXT]) {
       assert.ok(html.includes(`name="${key}"`)); assert.ok(html.includes(label));
@@ -226,7 +226,7 @@ try {
       ["subscription_required", /Choose an owner subscription/],
       ["onboarding_required", /Complete Studio Owner setup/],
       ["insufficient_credits", /At least 8 credits are required/],
-      ["paid_activation_disabled", /Paid Pro generation is unavailable/],
+      ["paid_activation_disabled", /Paid generation is unavailable/],
       ["unrecognized_reason", /unavailable under your owner subscription/],
     ];
     for (const [reason, expected] of messages) {
@@ -371,7 +371,7 @@ try {
       React.createElement(ui.PlanCards, { plans, status: { plan: "basic", trial_available: true }, activate() {} })));
     for (const text of ["10 credits per month", "2 active/editable projects", "3 active share links",
       "100 credits total", "14 days", "20 active share links", "500 credits per month",
-      "50 active/editable projects", "100 active share links", "LKR 1,500/month", "Paid activation unavailable"]) {
+      "50 active/editable projects", "100 active share links", "LKR 1,500/month", "Payment setup pending"]) {
       assert.ok(html.includes(text), text);
     }
   });

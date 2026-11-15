@@ -26,6 +26,9 @@ def period(subscription, now):
 
 
 def balance(db, subscription, now, grant=False):
+    if subscription.plan_kind not in ('basic', 'trial'):
+        from app.services.paid_credit_service import balance as paid_balance
+        return paid_balance(db, subscription, now)
     start, end = period(subscription, now)
     rows = list(db.scalars(select(CreditTransaction).where(
         CreditTransaction.user_id == subscription.user_id,

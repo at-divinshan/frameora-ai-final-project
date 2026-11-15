@@ -1,6 +1,7 @@
 """Owner project CRUD and plan-based editability enforcement."""
 
 from fastapi import HTTPException
+from app.core.owner_plans import limit_reached, validate_limit
 from sqlalchemy.orm import Session
 
 from app.models.customer_project import CustomerProject
@@ -18,7 +19,7 @@ def _locked_owner(db: Session, user: User) -> User:
     return owner
 
 
-def _project_limit(db: Session, owner: User, *, persist_expiry: bool) -> int:
+def _project_limit(db: Session, owner: User, *, persist_expiry: bool) -> int | None:
     _, entitlement = owner_entitlement_service.resolve_locked(
         db,
         owner,
@@ -27,12 +28,13 @@ def _project_limit(db: Session, owner: User, *, persist_expiry: bool) -> int:
         grant=False,
     )
     limit = entitlement["max_projects"]
-    if not entitlement["plan"] or limit < 1:
+    validate_limit(limit)
+    if not entitlement["plan"] or limit == 0:
         raise HTTPException(409, "Select an owner subscription before managing projects.")
     return limit
 
 
-def _editable_ids(projects: list[CustomerProject], limit: int) -> set[int]:
+def _editable_ids(projects: list[CustomerProject], limit: int | None) -> set[int]:
     return {project.id for project in projects[:limit]}
 
 
@@ -102,7 +104,7 @@ def create_project(db: Session, user: User, data: ProjectCreate) -> ProjectRespo
     try:
         owner = _locked_owner(db, user)
         limit = _project_limit(db, owner, persist_expiry=True)
-        if project_repository.count_active(db, owner.id) >= limit:
+        if limit_reached(project_repository.count_active(db, owner.id), limit):
             raise HTTPException(409, "Your subscription project limit has been reached.")
         project = project_repository.create(db, owner.id, data.model_dump())
         result = _response(project, True)

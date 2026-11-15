@@ -1,3 +1,4 @@
+import { limitLabel } from '../../utils/ownerLimits';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useOutletContext } from 'react-router-dom';
 import { ArrowRight, ClipboardList, FolderOpen, Gem, Link2, Plus, Sparkles } from 'lucide-react';
@@ -42,7 +43,7 @@ export default function Dashboard() {
       {data && (data.entitlement.status === 'active' ? <><h3>{data.plan?.name || data.entitlement.plan}</h3>
         <p>{data.entitlement.remaining_credits} available credits · each image batch costs {data.entitlement.batch_cost} credits.</p>
         <p>{data.entitlement.plan === 'trial' ? 'Trial expires' : 'Plan or credit period ends'}: {utcDate(data.entitlement.subscription_end || data.entitlement.period_end)}</p>
-        <p>Plan limits: {data.entitlement.max_projects} editable projects · {data.entitlement.max_share_links} active share links.</p>
+        <p>Plan limits: {limitLabel(data.entitlement.max_projects)} editable projects · {limitLabel(data.entitlement.max_share_links)} active share links.</p>
         {data.entitlement.previous_subscription_expired && <p role="status">Your previous plan expired; Free Basic is active. Credits do not carry over.</p>}
         {data.entitlement.reason === 'insufficient_credits' && <p role="status">At least {data.entitlement.batch_cost} credits are needed for another batch.</p>}
         {generationContractMismatch
@@ -50,7 +51,7 @@ export default function Dashboard() {
           : <Link className="account-secondary" to="/owner/ai/generate">Generate {OWNER_GENERATION_CONTRACT.batchSize} images</Link>}
         <Link className="account-secondary" to="/owner/ai/gallery">View studio gallery</Link>
       </> : <><p>{data.entitlement.reason === 'paid_activation_disabled'
-        ? 'Paid Pro is not enabled for AI generation yet.'
+        ? 'Paid generation is not enabled for AI generation yet.'
         : 'No spendable owner plan is available. Open Subscription to review your options.'}</p></>)}
       <Link className="account-secondary" to="/owner/subscription">Manage subscription</Link>
     </section>

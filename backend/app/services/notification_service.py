@@ -50,7 +50,7 @@ def owner_state(db, user, state, history=()):
             emit(db,user.id,f"credits:{state.get('subscription_id')}:{period}:{level}",
                  f'AI credits {level}: {balance} remaining. A batch requires {state["batch_cost"]} credits.', '/owner/subscription')
     for sub in history:
-        if sub.end_date and sub.plan_kind in ('trial','pro') and sub.status in ('active','expired'):
+        if sub.end_date and sub.plan_kind in ('trial','pro','starter','growth','unlimited') and sub.status in ('active','expired'):
             if sub.end_date <= now: kind='expired'
             elif sub.end_date <= now+timedelta(days=EXPIRY_WARNING_DAYS): kind='expiring'
             else: continue

@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {build} from 'esbuild';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {MemoryRouter} from 'react-router-dom';
+const dir=await mkdtemp(path.join(process.cwd(),'tests/.share-management-'));
+try {
+ const outfile=path.join(dir,'test.mjs');
+ await build({stdin:{contents:`export {ManagedShareLink} from './src/pages/owner/SharedLinks'; export {getOwnerShareLinks,setShareLinkActive,publishProjectPhase,cachedShareUrl} from './src/services/shareService'; export {default as api} from './src/services/api';`,resolveDir:process.cwd()},bundle:true,platform:'node',format:'esm',packages:'external',jsx:'automatic',loader:{'.css':'empty'},outfile,define:{'import.meta.env':'{}'}});
+ const {ManagedShareLink,getOwnerShareLinks,setShareLinkActive,publishProjectPhase,cachedShareUrl,api}=await import(pathToFileURL(outfile));
+ const token='a'.repeat(43), origin='https://frameora.example',url=`${origin}/sharing/${token}`;
+ const storage={getItem:key=>key==='frameora.photoshoot.share.2.8'?JSON.stringify({4:url}):null};
+ assert.equal(cachedShareUrl(storage,2,8,4,origin),url);assert.equal(cachedShareUrl(storage,1,8,4,origin),null);
+ assert.equal(cachedShareUrl(storage,2,8,4,'https://other.example'),null);
+ assert.equal(cachedShareUrl({getItem:()=>'{broken'},2,8,4,origin),null);
+ const link={id:4,project_id:8,project_name:'Portrait',generation_id:6,is_active:true,created_at:'2026-01-01T00:00:00',expires_at:null,published_phases:[{id:1,number:1}],unpublished_phases:[{id:2,number:2}]};
+ const markup=renderToStaticMarkup(React.createElement(MemoryRouter,null,React.createElement(ManagedShareLink,{link,url,busy:false})));
+ for(const text of ['Portrait','Copy Link','Deactivate','Phase 1','Phase 2','Publish Phase',url])assert.ok(markup.includes(text),text);
+ assert.ok(!markup.includes('value="1"'));
+ const missing=renderToStaticMarkup(React.createElement(MemoryRouter,null,React.createElement(ManagedShareLink,{link:{...link,is_active:false},url:null,busy:false})));
+ assert.ok(missing.includes('URL unavailable'));assert.ok(missing.includes('Activate'));
+ const requests=[];api.defaults.adapter=async config=>{requests.push(config);return {data:{},status:200,headers:{},config};};
+ await getOwnerShareLinks(8,50);await setShareLinkActive(8,4,true);await publishProjectPhase(8,4,2);
+ assert.equal(requests[0].url,'/owner/share-links');assert.equal(requests[0].params.before,50);
+ assert.equal(requests[1].method,'patch');assert.deepEqual(JSON.parse(requests[1].data),{is_active:true});
+ assert.equal(requests[2].url,'/owner/projects/8/share-links/4/phases/2');
+ console.log('Share management: scoped URLs, unavailable URLs, phase controls, list filters and status/publication requests passed.');
+} finally {await rm(dir,{recursive:true,force:true});}

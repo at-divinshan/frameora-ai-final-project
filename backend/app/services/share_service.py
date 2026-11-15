@@ -1,10 +1,11 @@
+from app.core.owner_plans import limit_reached, validate_limit
 from datetime import datetime
 from hashlib import sha256
 import re
 import secrets
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, and_, or_
 from sqlalchemy.orm import Session
 
 from app.models.ai_generation import AIGeneration
@@ -58,10 +59,11 @@ def _generation_assets(db: Session, user_id: int, generation_id: int):
     )
 
 
-def _sync_owner_limit(db: Session, user: User, now: datetime) -> int:
+def _sync_owner_limit(db: Session, user: User, now: datetime) -> int | None:
     _, entitlement = owner_entitlement_service.resolve_locked(db, user, now=now)
     limit = entitlement["max_share_links"]
-    if limit < 1:
+    validate_limit(limit)
+    if not entitlement["plan"] or limit == 0:
         raise HTTPException(409, "Select an owner subscription before managing share links.")
 
     rows = list(
@@ -80,7 +82,7 @@ def _sync_owner_limit(db: Session, user: User, now: datetime) -> int:
         if project.deleted_at is not None or (link.expires_at is not None and link.expires_at <= now):
             link.is_active = False
             continue
-        if retained >= limit:
+        if limit_reached(retained, limit):
             link.is_active = False
             continue
         retained += 1
@@ -117,7 +119,7 @@ def create_link(
                 ShareLink.is_active.is_(True),
             )
         )
-        if active_count >= limit:
+        if limit_reached(active_count, limit):
             raise HTTPException(409, "Your subscription share-link limit has been reached.")
 
         token = secrets.token_urlsafe(32)
@@ -168,7 +170,7 @@ def list_links(db: Session, user: User, project_id: int) -> list[ShareLinkRead]:
         raise
 
 
-def deactivate_link(db: Session, user: User, project_id: int, link_id: int) -> None:
+def deactivate_link(db: Session, user: User, project_id: int, link_id: int) -> ShareLinkRead:
     try:
         now = _now()
         _validate_project(db, user, project_id, editable=False)
@@ -183,7 +185,9 @@ def deactivate_link(db: Session, user: User, project_id: int, link_id: int) -> N
         if link is None:
             raise HTTPException(404, "Share link not found.")
         link.is_active = False
+        result = ShareLinkRead.model_validate(link)
         db.commit()
+        return result
     except Exception:
         db.rollback()
         raise
@@ -283,3 +287,82 @@ def read_shared_image(db: Session, user: User, token: str, asset_id: int) -> byt
         return preview_bytes(ai_image_storage.read_image(key))
     except OSError:
         raise HTTPException(404, "Shared image not found.") from None
+
+def management_links(db, user, *, project_id=None, before=None):
+    """Owner-wide history; tokens cannot be recovered from their stored hashes."""
+    from app.services import project_phase_service
+    from app.models.project_generation_phase import ProjectGenerationPhase as Phase, ShareLinkPhase
+    try:
+        require_owner(lock_profile(db, user.id))
+        _sync_owner_limit(db, user, _now())
+        projects = list(db.scalars(select(CustomerProject).where(CustomerProject.studio_owner_id == user.id)
+                                  .order_by(CustomerProject.id.desc())))
+        if project_id is not None and project_id not in {p.id for p in projects}:
+            raise HTTPException(404, 'Project not found.')
+        query = select(ShareLink, CustomerProject).outerjoin(CustomerProject, CustomerProject.id == ShareLink.project_id)\
+            .join(AIGeneration, AIGeneration.id == ShareLink.generation_id).where(or_(
+                CustomerProject.studio_owner_id == user.id,
+                and_(ShareLink.project_id.is_(None), AIGeneration.user_id == user.id)))
+        if project_id is not None:
+            query = query.where(ShareLink.project_id == project_id)
+        if before is not None:
+            query = query.where(ShareLink.id < before)
+        rows = list(db.execute(query.order_by(ShareLink.id.desc()).limit(51)))
+        phase_enabled = project_phase_service.available(db)
+        phase_cache = {}
+        items = []
+        for link, project in rows[:50]:
+            if project is None:
+                items.append(dict(ShareLinkRead.model_validate(link).model_dump(),
+                    project_name='Unassigned legacy link', project_archived=False, manageable=False,
+                    published_phases=[], unpublished_phases=[], url=None, url_available=False))
+                continue
+            if project.id not in phase_cache:
+                phase_cache[project.id] = list(db.scalars(select(Phase)
+                    .join(AIGeneration, AIGeneration.id == Phase.generation_id)
+                    .join(PhotographyPlan, PhotographyPlan.id == AIGeneration.plan_id)
+                    .where(Phase.project_id == project.id, AIGeneration.user_id == user.id,
+                           AIGeneration.status == 'completed', PhotographyPlan.project_id == project.id,
+                           PhotographyPlan.user_id == user.id).order_by(Phase.phase_number))) if phase_enabled else []
+            published = set(db.scalars(select(ShareLinkPhase.phase_id).where(ShareLinkPhase.share_link_id == link.id))) if phase_enabled else set()
+            phases = phase_cache[project.id]
+            granted = [p for p in phases if p.id in published or p.generation_id == link.generation_id]
+            items.append(dict(ShareLinkRead.model_validate(link).model_dump(),
+                project_name=project.project_title or project.customer_name or f'Project #{project.id}',
+                project_archived=project.deleted_at is not None, manageable=True,
+                published_phases=[dict(id=p.id, number=p.phase_number, generation_id=p.generation_id) for p in granted],
+                unpublished_phases=[dict(id=p.id, number=p.phase_number, generation_id=p.generation_id) for p in phases if p not in granted],
+                url=None, url_available=False))
+        result = dict(items=items, next_before=rows[49][0].id if len(rows)>50 else None,
+            phase_publication_available=phase_enabled,
+            projects=[dict(id=p.id, name=p.project_title or p.customer_name or f'Project #{p.id}', archived=p.deleted_at is not None) for p in projects])
+        db.commit()
+        return result
+    finally:
+        db.rollback()
+
+
+def activate_link(db, user, project_id, link_id):
+    """Reactivate the existing token, preserving its grants and enforcing limits."""
+    try:
+        require_owner(lock_profile(db, user.id))
+        _validate_project(db, user, project_id, editable=True)
+        limit = _sync_owner_limit(db, user, _now())
+        link = db.scalar(select(ShareLink).where(ShareLink.id == link_id,
+            ShareLink.project_id == project_id).with_for_update())
+        if link is None or _owned_generation(db, user, project_id, link.generation_id) is None:
+            raise HTTPException(404, 'Share link not found.')
+        if link.expires_at is not None and link.expires_at <= _now():
+            raise HTTPException(409, 'An expired link cannot be reactivated. Create a new link from the project.')
+        if not link.is_active:
+            count = db.scalar(select(func.count()).select_from(ShareLink).join(CustomerProject,
+                CustomerProject.id == ShareLink.project_id).where(CustomerProject.studio_owner_id == user.id,
+                                                                   ShareLink.is_active.is_(True)))
+            if limit_reached(count, limit):
+                raise HTTPException(409, 'Your subscription share-link limit has been reached.')
+            link.is_active = True
+        result = ShareLinkRead.model_validate(link)
+        db.commit()
+        return result
+    finally:
+        db.rollback()

@@ -18,7 +18,7 @@ const navigation = [
   { label: "AI Image Generation", icon: Images, path: "/owner/ai/generate" },
   { label: "AI Gallery", icon: Images, path: "/owner/ai/gallery" },
   { label: "Previous Account Data", icon: ClipboardList, path: "/owner/account-history" },
-  { label: "Share Links", icon: Link2 },
+  { label: "Share Links", icon: Link2, path: "/owner/share-links" },
   { label: "Subscription", icon: CreditCard, path: "/owner/subscription" },
   { label: "Notifications", icon: Bell, path: "/owner/notifications" },
   { label: "Studio Profile", icon: Camera, path: "/owner/studio-setup" },

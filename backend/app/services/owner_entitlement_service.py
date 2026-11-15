@@ -10,6 +10,7 @@ from app.services import credit_service, subscription_service as subscriptions
 from app.services.onboarding_service import require_owner
 
 from app.core.owner_generation_config import BATCH_SIZE
+from app.core.owner_plans import BY_CODE, PAID_CODES
 
 BATCH_COST = BATCH_SIZE
 
@@ -35,15 +36,15 @@ def resolve_locked(db, user, *, now, persist=False, grant=False):
     ready = bool(profile and profile.onboarding_status == 'completed')
     remaining, start, end = 0, None, None
     renewal_due = False
-    allowed_plan = active is not None and active.plan_kind in ('basic', 'trial')
+    allowed_plan = active is not None and active.plan_kind in ({'basic', 'trial'} | PAID_CODES)
     if allowed_plan:
         if active.id is None:
             remaining = available['basic'].monthly_credits
-            start, end = credit_service.period(active, now)
+            start, end = (active.start_date, active.end_date) if active.plan_kind in PAID_CODES else credit_service.period(active, now)
             renewal_due = True
         else:
             from app.models.credit_transaction import CreditTransaction
-            start, end = credit_service.period(active, now)
+            start, end = (active.start_date, active.end_date) if active.plan_kind in PAID_CODES else credit_service.period(active, now)
             granted = db.scalar(select(CreditTransaction.id).where(
                 CreditTransaction.user_id == user.id, CreditTransaction.subscription_id == active.id,
                 CreditTransaction.transaction_type == 'grant', CreditTransaction.period_start == start))
@@ -57,7 +58,7 @@ def resolve_locked(db, user, *, now, persist=False, grant=False):
         plan=active.plan_kind if active else None,
         status='active' if allowed_plan else 'unavailable',
         previous_subscription_expired=expired,
-        source_status='expired' if expired else 'active' if stored and stored.plan_kind in ('basic', 'trial') else 'unavailable',
+        source_status='expired' if expired else 'active' if stored and stored.plan_kind in ({'basic', 'trial'} | PAID_CODES) else 'unavailable',
         subscription_id=active.id if active else None,
         subscription_start=active.start_date if active else None,
         subscription_end=active.end_date if active else None,
@@ -65,8 +66,8 @@ def resolve_locked(db, user, *, now, persist=False, grant=False):
         monthly_renewal_due=renewal_due, generation_allowed=can_generate,
         batch_cost=BATCH_COST, reason=reason,
         trial_available=not any(row.plan_kind == 'trial' for row in history),
-        max_projects=available[active.plan_kind].max_projects if active else 0,
-        max_share_links=available[active.plan_kind].max_share_links if active else 0,
+        max_projects=(BY_CODE[active.plan_kind].max_projects if allowed_plan else available[active.plan_kind].max_projects) if active else 0,
+        max_share_links=(BY_CODE[active.plan_kind].max_share_links if allowed_plan else available[active.plan_kind].max_share_links) if active else 0,
     )
     return active, result
 

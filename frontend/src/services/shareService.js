@@ -24,3 +24,15 @@ export function sharingError(error) {
 }
 
 export const publishProjectPhase = (projectId, linkId, phaseId) => api.put(`/owner/projects/${projectId}/share-links/${linkId}/phases/${phaseId}`).then(r => r.data);
+
+export const getOwnerShareLinks = (projectId, before, signal) => api.get('/owner/share-links', {params:{project_id:projectId || undefined,before},signal}).then(r=>r.data);
+export const setShareLinkActive = (projectId, linkId, isActive) => api.patch(`/owner/projects/${projectId}/share-links/${linkId}`,{is_active:isActive}).then(r=>r.data);
+
+export function cachedShareUrl(storage, ownerId, projectId, linkId, origin) {
+  try {
+    const value=JSON.parse(storage.getItem(`frameora.photoshoot.share.${ownerId}.${projectId}`))?.[linkId];
+    if (typeof value !== 'string') return null;
+    const url=new URL(value);
+    return url.origin === origin && /^\/sharing\/[A-Za-z0-9_-]{43}$/.test(url.pathname) && !url.search && !url.hash ? url.href : null;
+  } catch { return null; }
+}

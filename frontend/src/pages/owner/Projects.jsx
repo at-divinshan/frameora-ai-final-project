@@ -1,3 +1,4 @@
+import { belowLimit } from '../../utils/ownerLimits';
 import { Link } from 'react-router-dom';
 import AccountLayout from '../../components/layout/AccountLayout';
 import ProjectUsage from '../../components/projects/ProjectUsage';
@@ -5,7 +6,7 @@ import useCustomerProjects from '../../hooks/useCustomerProjects';
 
 export default function Projects() {
   const { data, error, refresh } = useCustomerProjects();
-  const canCreate = data?.projects.length < data?.plan?.max_projects;
+  const canCreate = belowLimit(data?.projects.length, data?.plan?.max_projects);
   return <AccountLayout><section className="customer-project-page">
     <header className="account-heading"><div><h1>Photoshoots</h1><p>Manage your customers and upcoming shoots.</p></div>
       {canCreate && <Link className="owner-gradient-button" to="/owner/projects/create">Create Photoshoot</Link>}</header>

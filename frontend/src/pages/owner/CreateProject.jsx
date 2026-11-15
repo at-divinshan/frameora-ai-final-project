@@ -1,3 +1,4 @@
+import { belowLimit } from '../../utils/ownerLimits';
 import { OWNER_GENERATION_CONTRACT } from '../../config/ownerGeneration';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -87,6 +88,6 @@ export default function CreateProject() {
         <button className="account-secondary" onClick={() => { setDraft({ values: initialPhotoshoot, progress: {} }); setReference(null); setErrors({}); setError(''); }}>Create Another Photoshoot</button></div></section>
       : <PhotoshootForm values={draft.values} progress={draft.progress} errors={errors} busy={busy || Boolean(storageError)} onChange={change} onSubmit={submit}
           onReference={chooseReference}
-          referenceName={reference?.name || draft.referenceName} canCreate={Boolean(data && data.projects.length < data.plan?.max_projects)} />}
+          referenceName={reference?.name || draft.referenceName} canCreate={Boolean(data && belowLimit(data.projects.length, data.plan?.max_projects))} />}
   </section></AccountLayout>;
 }

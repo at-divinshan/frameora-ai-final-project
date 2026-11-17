@@ -2,7 +2,7 @@ import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { setAccessToken, setUnauthorizedHandler } from "../services/api";
 import {
   AUTH_STORAGE_KEY, clearStoredSession, getCurrentUser, loginUser,
-  readStoredSession, storeSession, upgradeUserToOwner,
+  readStoredSession, storeSession, upgradeUserToOwner, logoutAndClear,
 } from "../services/authService";
 import { clearGoogleFlow } from "../services/googleAuthService";
 import { getProfile, getProfilePicture } from "../services/userService";
@@ -57,7 +57,7 @@ export function AuthProvider({ children }) {
     };
   }, [user?.id, user?.profile_image, session?.accessToken, pictureRevision]);
 
-  const logout = useCallback((message = "") => {
+  const clearAuth = useCallback((message = "") => {
     revision.current += 1;
     clearStoredSession();
     clearGoogleFlow();
@@ -67,6 +67,18 @@ export function AuthProvider({ children }) {
     setAuthError(typeof message === "string" ? message : "");
     setLoading(false);
   }, []);
+
+  const logoutPending = useRef(null);
+  const logout = useCallback((message = "") => {
+    if (logoutPending.current) return logoutPending.current;
+    const started = ++revision.current;
+    const pending = logoutAndClear(() => {
+      // A delayed logout response must not clear a subsequently authenticated session.
+      if (revision.current === started) clearAuth(message);
+    }).finally(() => { logoutPending.current = null; });
+    logoutPending.current = pending;
+    return pending;
+  }, [clearAuth]);
 
   useEffect(() => {
     let controller;
@@ -89,7 +101,7 @@ export function AuthProvider({ children }) {
       } catch (error) {
         if (currentRevision !== revision.current) return;
         if (error.response?.status === 401) {
-          logout("Your session has expired. Please sign in again.");
+          clearAuth("Your session has expired. Please sign in again.");
         } else {
           setAccessToken(null);
           setAuthError("Unable to verify your session. Please try signing in again.");
@@ -98,7 +110,7 @@ export function AuthProvider({ children }) {
         if (currentRevision === revision.current) setLoading(false);
       }
     }
-    setUnauthorizedHandler(() => logout("Your session has expired. Please sign in again."));
+    setUnauthorizedHandler(() => clearAuth("Your session has expired. Please sign in again."));
     restore();
     function syncSession(event) {
       if (event.key === AUTH_STORAGE_KEY || event.key === null) restore();
@@ -110,11 +122,11 @@ export function AuthProvider({ children }) {
       setUnauthorizedHandler(null);
       window.removeEventListener("storage", syncSession);
     };
-  }, [logout]);
+  }, [clearAuth]);
 
   useEffect(() => {
     if (!session) return;
-    const expire = () => logout("Your session has expired. Please sign in again.");
+    const expire = () => clearAuth("Your session has expired. Please sign in again.");
     let timer;
     function scheduleExpiry() {
       const remaining = session.expiresAt - Date.now();
@@ -126,7 +138,7 @@ export function AuthProvider({ children }) {
     const checkExpiry = () => { if (Date.now() >= session.expiresAt) expire(); };
     window.addEventListener("focus", checkExpiry);
     return () => { window.clearTimeout(timer); window.removeEventListener("focus", checkExpiry); };
-  }, [session, logout]);
+  }, [session, clearAuth]);
 
   async function login(values) {
     const currentRevision = ++revision.current;

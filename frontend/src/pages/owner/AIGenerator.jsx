@@ -514,7 +514,7 @@ export default function OwnerAIGenerator({ photoshoot } = {}) {
       </section>}
       {showPlanForm && <section className="account-card">
         <h2>Create a studio photography plan</h2>
-        <PlanForm onSubmit={savePlan} submitting={planSaving} />
+        <PlanForm compact onSubmit={savePlan} submitting={planSaving} />
         <button type="button" className="account-secondary" onClick={() => setShowPlanForm(false)} disabled={planSaving}>Cancel</button>
       </section>}
       {plans.length > 0 && !blockedByPending && !result && <form className="account-card ai-form" onSubmit={(event) => {
@@ -526,7 +526,8 @@ export default function OwnerAIGenerator({ photoshoot } = {}) {
           setReviewing(Object.keys(errors).length === 0);
         }
       }}>
-        <fieldset disabled={busy || !projectEditable}>
+        <fieldset className="owner-create-grid" disabled={busy || !projectEditable}>
+          <section className="account-card owner-create-card">
           <div className="form-field">
             <label htmlFor="owner-ai-plan">Photography plan</label>
             <select id="owner-ai-plan" required value={planId} disabled={retrying || Boolean(photoshoot)}
@@ -547,6 +548,12 @@ export default function OwnerAIGenerator({ photoshoot } = {}) {
           </section>}
           {!photoshoot && searchParams.get('feedback') && <RevisionInstructions projectId={searchParams.get('project')} planId={planId} feedbackId={searchParams.get('feedback')} disabled={retrying || busy} onUse={text => { setDescription(text); setReviewing(false); }} />}
           {!photoshoot && (searchParams.get('feedback') || description) && <label htmlFor="revision-instructions">Revision instructions<textarea id="revision-instructions" value={description} maxLength={2000} disabled={retrying || busy} onChange={event => { setDescription(event.target.value); setReviewing(false); }} /></label>}
+          {photoshoot?.reference && reference && <p>Reference photo ready: {reference.name}</p>}
+          <ImageUploader value={reference} onChange={setReference} disabled={busy} />
+          <ImageUploader id="background-reference" background value={backgroundReference} onChange={setBackgroundReference} disabled={busy} />
+          {backgroundReference && <p className="ai-note">The uploaded scene takes priority over automatic background variations.</p>}
+          </section>
+          <section className="account-card owner-create-card">
           <details open={!photoshoot}><summary>Image customization</summary>
           <OwnerCustomization values={preferences} errors={preferenceErrors} disabled={retrying}
             onChange={event => {
@@ -556,10 +563,7 @@ export default function OwnerAIGenerator({ photoshoot } = {}) {
               setReviewing(false);
             }} />
           </details>
-          {photoshoot?.reference && reference && <p>Reference photo ready: {reference.name}</p>}
-          <ImageUploader value={reference} onChange={setReference} disabled={busy} />
-          <ImageUploader id="background-reference" background value={backgroundReference} onChange={setBackgroundReference} disabled={busy} />
-          {backgroundReference && <p className="ai-note">The uploaded scene takes priority over automatic background variations.</p>}
+          </section>
           {retrying && <p className="ai-note">Retrying the same request key; the plan and customization preferences are locked to the original submission.</p>}
           {reviewing && !retrying && <OwnerGenerationConfirmation entitlement={entitlement} busy={busy}
             onConfirm={submitBatch} onCancel={() => setReviewing(false)} />}

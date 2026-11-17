@@ -43,3 +43,30 @@ def close_rate_limits():
             pass
         finally:
             client.cache_clear()
+
+
+def limit_public_auth(action: str, email: str, peer: str):
+    """Identical limits for existing and nonexistent addresses; never trust forwarded IPs."""
+    try:
+        redis = client()
+        for label, maximum in ((f'{action}:email:{email.strip().lower()}', 5),
+                               (f'{action}:peer:{peer}', 30)):
+            key = 'frameora:auth-rate:' + hashlib.sha256(label.encode()).hexdigest()
+            if redis.eval(LIMIT, 1, key, 300) > maximum:
+                raise HTTPException(429, 'Too many attempts. Please try again later.', headers={'Retry-After':'300'})
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(503, 'Authentication is temporarily unavailable.') from None
+
+
+def limit_verification_peer(action: str, peer: str):
+    """Cheap per-route peer guard before schema/config checks; no account lookup."""
+    try:
+        key = 'frameora:verification-peer:' + hashlib.sha256(f'{action}:{peer}'.encode()).hexdigest()
+        if client().eval(LIMIT, 1, key, 60) > 30:
+            raise HTTPException(429, 'Too many attempts. Please try again later.', headers={'Retry-After':'60'})
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(503, 'Verification is temporarily unavailable.') from None

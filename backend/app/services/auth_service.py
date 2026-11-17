@@ -12,6 +12,8 @@ from app.core.security import (
     require_jwt_configuration, verify_password,
 )
 from app.models.user import User
+from app.services import email_verification
+from app.schemas.auth import RegistrationResponse
 from app.repositories.user_repository import add_user, find_by_email
 from app.repositories.user_repository import lock_profile
 from app.core.security import auth_versions_enabled
@@ -39,25 +41,36 @@ def public_user(user: User) -> AuthUser:
     return AuthUser(id=str(user.id), name=user.name, email=user.email, role=user.role)
 
 
-def register(db: Session, data: RegisterRequest) -> AuthUser:
+def register(db: Session, data: RegisterRequest) -> RegistrationResponse:
     if data.role not in PUBLIC_ROLES:
         raise HTTPException(status_code=403, detail="This account type cannot be publicly registered.")
     if find_by_email(db, str(data.email)) is not None:
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
+    delivery = email_verification.prerequisites(db)
     password_hash = hash_password(data.password)
     try:
         user = add_user(
             db, name=data.name, email=str(data.email), password_hash=password_hash, role=data.role,
         )
+        user.email_verification_required = True
+        user.is_verified = False
+        # Capture token identity before commit; never send mail for an uncertain commit.
+        from types import SimpleNamespace
+        pending = SimpleNamespace(id=user.id, email=user.email, auth_version=user.auth_version,
+                                  email_verification_required=True, is_verified=False)
         result = public_user(user)
         db.commit()
-        return result
     except IntegrityError as exc:
         db.rollback()
         # The existing unique email index also handles simultaneous registration requests.
         if getattr(exc.orig, "args", (None,))[0] == 1062:
             raise HTTPException(status_code=409, detail="An account with this email already exists.") from None
         raise
+
+    sent = True
+    try: email_verification.send_verification(pending, delivery)
+    except HTTPException: sent = False
+    return RegistrationResponse(**result.model_dump(), email_sent=sent)
 
 
 def login(db: Session, data: LoginRequest) -> TokenResponse:
@@ -81,6 +94,7 @@ def login(db: Session, data: LoginRequest) -> TokenResponse:
             status_code=401, detail="Invalid email or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    email_verification.require_verified_for_password_login(user)
     # Login never changes existing account records or hashes.
     return issue_session(db, user, data.remember_me)
 

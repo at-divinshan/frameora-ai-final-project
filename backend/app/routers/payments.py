@@ -33,7 +33,7 @@ def user_subscription(response: Response, user=Depends(require_roles('user')), d
     return status(db, user)
 
 @router.post('/payments/stripe/webhook')
-async def stripe_webhook(request: Request, db=Depends(get_db)):
+async def stripe_webhook(request: Request):
     from app.core.stripe_test import require_release
     require_release()
     raw = bytearray()
@@ -41,4 +41,4 @@ async def stripe_webhook(request: Request, db=Depends(get_db)):
         raw.extend(chunk)
         if len(raw) > MAX_WEBHOOK_BYTES:
             raise HTTPException(413, 'Webhook is too large.')
-    return payment_service.receive_webhook(bytes(raw), request.headers.get('stripe-signature', ''), db)
+    return payment_service.receive_webhook(bytes(raw), request.headers.get('stripe-signature', ''))

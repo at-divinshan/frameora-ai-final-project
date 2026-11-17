@@ -110,6 +110,7 @@ export function validatePhotographyPlanForm(values) {
 }
 
 export default function PlanForm({
+  compact = false,
   onSubmit,
   submitting = false,
   submitError = "",
@@ -148,10 +149,8 @@ export default function PlanForm({
     }
   }
 
-  return (
-    <form className="user-plan-form" onSubmit={submit} noValidate>
-      {formError && <p className="user-plan-message is-error" role="alert">{formError}</p>}
-      {submitError && <p className="user-plan-message is-error" role="alert">{submitError}</p>}
+
+  const detailFields = <>
       <Input
         id="photography_type"
         name="photography_type"
@@ -183,35 +182,8 @@ export default function PlanForm({
         required
         error={errors.environment}
       />
-      {preferenceFields.map(([name, label, options]) => (
-        <div className="form-field" key={name}>
-          <label htmlFor={name}>{label} (optional)</label>
-          <div className="input-wrapper">
-            <select className="user-plan-select" id={name} name={name} value={values[name]} onChange={change}>
-              <option value="">Select a preference</option>
-              {options.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </div>
-        </div>
-      ))}
-      <Input
-        id="outfit_color"
-        name="outfit_color"
-        label="Outfit Color (optional)"
-        value={values.outfit_color}
-        onChange={change}
-        maxLength={50}
-      />
-      {[ ["outfit_details", "Outfit Details", 1000, "Describe clothing, colors and accessories…"],
-         ["extra_instructions", "Extra Instructions", 2000, "Any additional photography preferences…"] ].map(([name, label, limit, placeholder]) => (
-        <div className="form-field" key={name}>
-          <label htmlFor={name}>{label} (optional)</label>
-          <textarea className="user-plan-textarea" id={name} name={name} rows={3} maxLength={limit}
-            value={values[name]} onChange={change} placeholder={placeholder}
-            aria-invalid={Boolean(errors[name])} aria-describedby={errors[name] ? `${name}-error` : undefined} />
-          {errors[name] && <span className="field-error" id={`${name}-error`} role="alert">{errors[name]}</span>}
-        </div>
-      ))}
+  </>;
+  const equipmentAndLocation = <>
       <fieldset className="user-plan-equipment">
         <legend>Photography Equipment (Optional)</legend>
         <p>Tell us what you have available. Professional camera equipment is not required.</p>
@@ -280,6 +252,46 @@ export default function PlanForm({
         value={values.shoot_datetime}
         onChange={change}
       />
+  </>;
+  const preferenceInputs = <>
+      {preferenceFields.map(([name, label, options]) => (
+        <div className="form-field" key={name}>
+          <label htmlFor={name}>{label} (optional)</label>
+          <div className="input-wrapper">
+            <select className="user-plan-select" id={name} name={name} value={values[name]} onChange={change}>
+              <option value="">Select a preference</option>
+              {options.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </div>
+        </div>
+      ))}
+      <Input
+        id="outfit_color"
+        name="outfit_color"
+        label="Outfit Color (optional)"
+        value={values.outfit_color}
+        onChange={change}
+        maxLength={50}
+      />
+      {[ ["outfit_details", "Outfit Details", 1000, "Describe clothing, colors and accessories…"],
+         ["extra_instructions", "Extra Instructions", 2000, "Any additional photography preferences…"] ].map(([name, label, limit, placeholder]) => (
+        <div className="form-field" key={name}>
+          <label htmlFor={name}>{label} (optional)</label>
+          <textarea className="user-plan-textarea" id={name} name={name} rows={3} maxLength={limit}
+            value={values[name]} onChange={change} placeholder={placeholder}
+            aria-invalid={Boolean(errors[name])} aria-describedby={errors[name] ? `${name}-error` : undefined} />
+          {errors[name] && <span className="field-error" id={`${name}-error`} role="alert">{errors[name]}</span>}
+        </div>
+      ))}
+  </>;
+  return (
+    <form className={`user-plan-form${compact ? " plan-create-columns" : ""}`} onSubmit={submit} noValidate>
+      {formError && <p className="user-plan-message is-error" role="alert">{formError}</p>}
+      {submitError && <p className="user-plan-message is-error" role="alert">{submitError}</p>}
+      {compact ? <>
+        <section className="plan-create-details"><h2>Photography details</h2>{detailFields}{equipmentAndLocation}</section>
+        <section className="plan-create-preferences"><h2>Optional preferences</h2>{preferenceInputs}</section>
+      </> : <>{detailFields}{preferenceInputs}{equipmentAndLocation}</>}
       <Button type="submit" className="user-dashboard-create-button" loading={submitting} disabled={submitting}>
         {submitLabel} <ArrowRight size={17} aria-hidden="true" />
       </Button>

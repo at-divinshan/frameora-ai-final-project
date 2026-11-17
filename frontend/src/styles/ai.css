@@ -133,3 +133,31 @@
 .gallery-folder img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: .75rem; }
 .gallery-folder strong { overflow-wrap: anywhere; }
 .gallery-folder-placeholder { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; font-size: 4rem; opacity: .6; }
+
+/* Keep the Owner generator compact without changing any control behavior. */
+.owner-ai-page .ai-form:has(.owner-create-grid) {
+  padding: 0; border: 0; background: transparent; box-shadow: none;
+}
+.owner-ai-page .ai-form > .owner-create-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start;
+}
+.owner-ai-page .owner-create-grid > :not(.owner-create-card) { grid-column: 1 / -1; }
+.owner-ai-page .owner-create-card {
+  display: grid; gap: 12px; min-width: 0; margin: 0; padding: 16px;
+}
+.owner-ai-page .owner-create-card > * { min-width: 0; }
+.owner-ai-page .owner-create-card details { padding: 0; border: 0; }
+.owner-ai-page .owner-create-card .owner-customization { margin-top: 8px; gap: 10px; }
+.owner-ai-page .owner-create-card .account-grid { gap: 10px 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.owner-ai-page .owner-create-card .ai-plan-summary { padding: 12px; }
+.owner-ai-page .owner-create-card .ai-plan-summary > p { margin-bottom: 10px; }
+.owner-ai-page .owner-create-card small { grid-column: auto; grid-row: auto; }
+.owner-ai-page .owner-create-card input[type="file"] { width: 100%; min-width: 0; }
+.owner-ai-page .owner-create-card p { overflow-wrap: anywhere; }
+@media (max-width: 1000px) {
+  .owner-ai-page .ai-form > .owner-create-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 540px) {
+  .owner-ai-page .owner-create-card { padding: 12px; }
+  .owner-ai-page .owner-create-card .account-grid { grid-template-columns: minmax(0, 1fr); }
+}

@@ -8,7 +8,7 @@ let completion;
 export function readGoogleFlow() {
   try {
     const value = JSON.parse(sessionStorage.getItem(FLOW_KEY));
-    if (!value || !["login", "link"].includes(value.mode) || !Number.isFinite(value.expiresAt) || value.expiresAt <= Date.now()) return null;
+    if (!value || !["login", "link", "password-setup"].includes(value.mode) || !Number.isFinite(value.expiresAt) || value.expiresAt <= Date.now()) return null;
     return value;
   } catch { return null; }
 }
@@ -41,14 +41,14 @@ export function googleErrorMessage(error) {
   }
 }
 
-export async function startGoogle({ remember = false, link = false, password, userId, returnTo } = {}) {
+export async function startGoogle({ remember = false, link = false, setup = false, password, userId, returnTo } = {}) {
   clearGoogleFlow();
   // Verify storage before starting a browser-bound transaction. Never store passwords/tokens here.
-  const flow = { returnTo: link ? null : safeShareReturn(returnTo), mode: link ? "link" : "login", remember, userId: link ? userId : undefined, stage: "pending", expiresAt: Date.now() + 300000 };
+  const flow = { returnTo: link ? null : safeShareReturn(returnTo), mode: setup ? "password-setup" : link ? "link" : "login", remember, userId: link || setup ? userId : undefined, stage: "pending", expiresAt: Date.now() + 300000 };
   saveFlow(flow);
   try {
-    const path = link ? "/auth/google/link/start" : "/auth/google/start";
-    const body = link ? { password, consent: true } : { remember_me: remember };
+    const path = setup ? "/auth/google/password-setup/start" : link ? "/auth/google/link/start" : "/auth/google/start";
+    const body = setup ? { consent: true } : link ? { password, consent: true } : { remember_me: remember };
     const { data } = await api.post(path, body, { withCredentials: true });
     const url = new URL(data.authorization_url);
     if (url.origin !== "https://accounts.google.com" || url.pathname !== "/o/oauth2/v2/auth" || url.username || url.password) {

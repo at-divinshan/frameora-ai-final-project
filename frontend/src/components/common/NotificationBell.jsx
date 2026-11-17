@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { dismissWithEscape } from '../../utils/keyboardDismiss';
+import { useState, useRef } from 'react';
 import { Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
@@ -12,9 +13,10 @@ export function NotificationItems({ items, onRead }) {
   </article>);
 }
 export default function NotificationBell({className}) {
+  const trigger=useRef(null);
   const {user}=useAuth();const [open,setOpen]=useState(false);
   const {data,error,refresh,read}=useUnreadNotifications();
-  return <div className="notification-bell"><button className={className} type="button" aria-label={`Notifications${data?.unread_count ? `, ${data.unread_count} unread` : ''}`} aria-expanded={open} onClick={()=>{setOpen(!open);if(!open)refresh();}}><Bell size={21}/>{data?.unread_count>0 && <span className="notification-count">{data.unread_count>99?'99+':data.unread_count}</span>}</button>
+  return <div className="notification-bell" onKeyDown={event=>dismissWithEscape(event,open,()=>setOpen(false),trigger)}><button ref={trigger} className={className} type="button" aria-label={`Notifications${data?.unread_count ? `, ${data.unread_count} unread` : ''}`} aria-expanded={open} onClick={()=>{setOpen(!open);if(!open)refresh();}}><Bell size={21}/>{data?.unread_count>0 && <span className="notification-count">{data.unread_count>99?'99+':data.unread_count}</span>}</button>
     {open && <section className="notification-popover" aria-label="Recent notifications"><button className="account-secondary" onClick={()=>setOpen(false)}>Close</button><h2>Notifications</h2>{error && <p role="alert">{error}</p>}{!data&&!error&&<p role="status">Loading…</p>}{data?.items.length===0&&<p>No new notifications</p>}<NotificationItems items={data?.items.slice(0,5)||[]} onRead={read}/><Link to={`/${user.role}/notifications`} onClick={()=>setOpen(false)}>All notifications</Link></section>}
   </div>;
 }

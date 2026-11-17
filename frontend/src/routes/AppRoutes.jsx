@@ -1,3 +1,4 @@
+import EmailVerification from '../pages/auth/EmailVerification';
 import AdminUsers from "../pages/admin/Users";
 import Notifications from "../pages/shared/Notifications";
 import LivePoseGuide from "../pages/shared/LivePoseGuide";
@@ -16,7 +17,6 @@ import { useEffect } from "react";
 import { Navigate, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
-import ForgotPassword from "../pages/auth/ForgotPassword";
 import GoogleCallback from "../pages/auth/GoogleCallback";
 import GoogleLink from "../pages/auth/GoogleLink";
 import UserDashboard from "../pages/user/Dashboard";
@@ -51,7 +51,7 @@ function PublicAuthRoute({ children }) {
   const location = useLocation();
   const returnTo = shareReturnFromSearch(location.search);
   const { user, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <div className="auth-session-loading" role="status" aria-live="polite"><span className="auth-session-loading-dot" aria-hidden="true" /><span>Checking your session…</span></div>;
   return user ? <Navigate to={returnTo || dashboardRoute(user.role)} replace /> : children;
 }
 
@@ -59,8 +59,7 @@ function Logout() {
   const { logout } = useAuth();
   const navigate = useNavigate();
   useEffect(() => {
-    logout();
-    navigate("/login", { replace: true });
+    logout().finally(() => navigate("/login", { replace: true }));
   }, [logout, navigate]);
   return null;
 }
@@ -76,9 +75,9 @@ export default function AppRoutes() {
         <Route path="/for-studios" element={<ForStudios />} />
         <Route path="/about" element={<About />} />
       </Route>
+      <Route path="/verify-email" element={<EmailVerification />} />
       <Route path="/login" element={<PublicAuthRoute><Login /></PublicAuthRoute>} />
       <Route path="/register" element={<PublicAuthRoute><Register /></PublicAuthRoute>} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/logout" element={<Logout />} />
       <Route path="/auth/google/callback" element={<GoogleCallback />} />
       <Route path="/auth/google/link" element={<GoogleLink />} />

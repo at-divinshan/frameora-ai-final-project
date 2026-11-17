@@ -154,3 +154,15 @@
 .account-status-dialog::backdrop{background:#0008}
 
 .admin-users-page .form-input{display:block;width:100%;padding:12px;border:1px solid var(--account-border);border-radius:10px;background:var(--account-input);color:var(--account-text);font:inherit}
+
+/* Owner photoshoot creation retains all three groups in two balanced columns. */
+.photoshoot-form { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; align-items: start; }
+.photoshoot-form > fieldset { grid-column: 1; padding: 16px; }
+.photoshoot-form > section { grid-column: 2; grid-row: 1 / span 2; margin: 0; padding: 16px; min-width: 0; }
+.photoshoot-form > .photoshoot-actions, .photoshoot-form > .ai-note { grid-column: 1 / -1; }
+.photoshoot-form .form-field { margin-bottom: 12px; min-width: 0; }
+.photoshoot-form .account-grid { gap: 0 12px; }
+@media(max-width: 1000px) {
+  .photoshoot-form { grid-template-columns: minmax(0,1fr); }
+  .photoshoot-form > fieldset, .photoshoot-form > section { grid-column: 1; grid-row: auto; }
+}

@@ -67,9 +67,13 @@ export async function registerUser(data) {
   return response.data;
 }
 
-export async function requestPasswordReset(email) {
-  const response = await api.post("/auth/forgot-password", {
-    email,
-  });
-  return response.data;
+
+export async function logoutAndClear(clear) {
+  let confirmed = false;
+  try {
+    await api.post('/auth/logout', {}, { timeout: 5000 });
+    confirmed = true;
+  } catch { /* Local logout must complete even when server revocation is unavailable. */ }
+  finally { clear(); }
+  return confirmed;
 }

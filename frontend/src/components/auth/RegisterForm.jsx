@@ -28,7 +28,11 @@ export default function RegisterForm() {
     if (Object.keys(nextErrors).length) return;
     setLoading(true);
     try {
-      await registerUser({ name: values.name.trim(), email: values.email.trim(), password: values.password, confirm_password: values.confirmPassword, accept_terms: values.acceptTerms, role: values.role });
+      const result = await registerUser({ name: values.name.trim(), email: values.email.trim(), password: values.password, confirm_password: values.confirmPassword, accept_terms: values.acceptTerms, role: values.role });
+      if (result.status === 'verification_required') {
+        navigate('/verify-email', { replace: true, state: { email: values.email.trim(), emailSent: result.email_sent } });
+        return;
+      }
       navigate("/login", { replace: true, state: { message: "Account created. Sign in to continue." } });
     } catch (failure) {
       setErrors(authFieldErrors(failure));

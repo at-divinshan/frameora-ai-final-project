@@ -7,7 +7,7 @@ export default function Landing() {
   const { theme } = useTheme();
 
 
-  return <>
+  return <div className="public-landing">
     <PageMeta title="Frameora AI" description="From shoot planning to pose ideas and AI-generated visuals, Frameora AI helps you capture every moment better." />
     <section className={`public-home-hero${theme === "dark" ? " public-home-hero-dark" : ""}`} aria-labelledby="landing-hero-heading">
       <div className="public-container public-hero-content">
@@ -22,12 +22,12 @@ export default function Landing() {
         </div>
 
       </div>
-    </section>
     <section className="public-container public-feature-strip" aria-label="Key features">{[features[0], features[1], features[2], features[4]].map(feature => <FeatureCard key={feature.id} feature={feature} compact />)}</section>
+    </section>
     <section className="public-section public-container"><SectionHeading eyebrow="A clearer creative journey" title="How Frameora Works">From the first spark of inspiration to a more organized shoot.</SectionHeading><div className="public-steps">{[[UserRound, 'Create your account', 'Start with email or Google.', 'Available'], [CalendarDays, 'Plan your session', 'Bring your ideas and preferences.', 'Planned'], [Sparkles, 'Explore possibilities', 'Discover AI guidance and visual concepts.', 'Planned'], [FolderHeart, 'Keep it all together', 'Organize your gallery or studio projects.', 'Planned']].map(([Icon, title, text, status], i) => <article key={title}><span className="public-step-orb"><Icon size={28} aria-hidden="true" /></span><span className="public-step-index">0{i + 1}</span><h3>{title}</h3><p>{text}</p><span className="public-status">{status}</span></article>)}</div><div className="public-centered"><TextLink to="/how-it-works">Explore the full journey</TextLink></div></section>
     <section className="public-section public-container"><SectionHeading title="Built for Everyone">Different perspectives. One place to bring them to life.</SectionHeading><div className="public-audience-grid">{[[UserRound, 'For Creators', 'Photography enthusiasts and creators', 'Plan with intention, find new inspiration and build a personal home for your photography ideas.', '/for-creators', 'Explore Creator Features'], [Users, 'For Studios', 'Professional studio owners', 'A planned workspace for customer projects, organized images and secure, account-protected photo sharing.', '/for-studios', 'Explore Studio Features']].map(([Icon, title, subtitle, text, to, label]) => <article className="public-card public-audience" key={title}><span className="public-icon"><Icon aria-hidden="true" /></span><div><span className="public-eyebrow">{title}</span><h3>{subtitle}</h3><p>{text}</p><TextLink to={to}>{label}</TextLink></div></article>)}</div></section>
     <section className="public-section public-container"><SectionHeading eyebrow="Photography inspiration" title="A world of possibilities">Explore light, mood and perspective. Illustrative local artwork, ready to inspire.</SectionHeading><div className="public-inspiration">{[['/images/landing/hero-dark.png', 'Chase the extraordinary', 'Mountain silhouettes and vivid sunset skies'], ['/images/landing/hero-light.png', 'Find a softer perspective', 'Alpine scenery in soft pastel evening light'], ['/images/auth/mountain-dark.png', 'Let the light lead', 'Atmospheric mountain landscape']].map(([src, title, alt]) => <figure key={src}><img src={src} alt={alt} loading="lazy" /><figcaption><span>Visual inspiration</span><h3>{title}</h3></figcaption></figure>)}</div></section>
     <section className="public-section public-container public-why"><div><span className="public-eyebrow">Why Frameora AI?</span><h2>More space for<br /><span className="public-gradient">your creativity.</span></h2><p>A thoughtful vision for the moments before, during and after a photoshoot. Photography tools below are planned.</p><TextLink to="/features">Discover the features</TextLink></div><ul>{['Simplified photography planning', 'AI-powered creative guidance', 'Better visualization before photoshoots', 'Organized photography assets', 'Secure customer photo sharing', 'One platform for different photography workflows'].map(text => <li key={text}><Check size={18} aria-hidden="true" />{text}</li>)}</ul></section>
     <FAQ items={commonFaq.slice(0, 4)} /><FinalCTA />
-  </>;
+  </div>;
 }

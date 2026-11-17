@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { dismissWithEscape } from '../../utils/keyboardDismiss';
+import { useState, useRef } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { Camera, Bell, ClipboardList, Compass, CreditCard, Heart, House, LogOut, Menu, UserRound, Settings, X } from "lucide-react";
 import FrameoraLogo from "../common/FrameoraLogo";
@@ -11,12 +12,13 @@ const upcomingItems = [
 ];
 
 export default function Sidebar() {
+  const menuTrigger = useRef(null);
   const [expanded, setExpanded] = useState(false);
   return (
-    <aside className="user-dashboard-sidebar">
+    <aside className="user-dashboard-sidebar" onKeyDown={event => dismissWithEscape(event, expanded, () => setExpanded(false), menuTrigger, true)}>
       <div className="user-dashboard-brand-row">
         <Link to="/user/dashboard" aria-label="Frameora home"><FrameoraLogo /></Link>
-        <button className="user-dashboard-icon-button user-dashboard-menu-toggle" type="button"
+        <button ref={menuTrigger} className="user-dashboard-icon-button user-dashboard-menu-toggle" type="button"
           aria-label={expanded ? "Close navigation" : "Open navigation"}
           aria-expanded={expanded} aria-controls="user-dashboard-navigation"
           onClick={() => setExpanded((current) => !current)}>

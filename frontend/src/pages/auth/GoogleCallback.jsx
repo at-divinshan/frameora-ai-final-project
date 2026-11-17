@@ -1,3 +1,4 @@
+import PasswordManagement from '../../components/common/PasswordManagement';
 import { safeShareReturn } from "../../utils/shareReturn";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -19,7 +20,8 @@ export default function GoogleCallback() {
   const { user, loading, googleAuthenticate } = useAuth();
   const navigate = useNavigate();
   const [arrival] = useState(() => ({
-    error: CALLBACK_ERRORS[window.location.hash] || (window.location.hash || window.location.search ? "Invalid Google return. Please start again." : ""),
+    setup: window.location.hash === "#google-password-setup",
+    error: CALLBACK_ERRORS[window.location.hash] || (window.location.hash !== "#google-password-setup" && window.location.hash || window.location.search ? "Invalid Google return. Please start again." : ""),
   }));
   const [view, setView] = useState("waiting");
   const [error, setError] = useState("");
@@ -38,6 +40,10 @@ export default function GoogleCallback() {
       setView("error"); clearGoogleFlow(); return;
     }
     if (!flow) { setError("This Google sign-in has expired or was opened in another browser. Please start again."); setView("error"); return; }
+    if (flow.mode === "password-setup") {
+      if (!arrival.setup || !user || flow.userId !== user.id || user.role === 'admin') { setError('Sign in and restart password setup from Settings.'); setView('error'); return; }
+      setView('password-setup'); return;
+    }
     if (flow.mode === "link") { setView("link"); return; }
     if (flow.stage === "registration") { setView("register"); return; }
     googleAuthenticate(completeGoogle, flow.remember).then((result) => {
@@ -51,7 +57,7 @@ export default function GoogleCallback() {
       if (active) { setError(googleErrorMessage(failure)); setView("error"); clearGoogleFlow(); }
     });
     return () => { active = false; };
-  }, [loading, googleAuthenticate, navigate, arrival]);
+  }, [loading, googleAuthenticate, navigate, arrival, user]);
 
   async function link(event) {
     event.preventDefault();
@@ -72,6 +78,7 @@ export default function GoogleCallback() {
   const canLink = user && user.role !== "admin" && flow?.mode === "link" && flow.userId === user.id;
   return <Login>
     {view === "waiting" && <p role="status">Completing Google sign-in...</p>}
+    {view === "password-setup" && <PasswordManagement setup />}
     {view === "register" && <GoogleRegistrationForm />}
     {view === "link" && <>
       <div className="form-heading"><h1>Confirm Google Link</h1><p>Your existing role and account will stay the same.</p></div>

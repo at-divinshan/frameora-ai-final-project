@@ -35,7 +35,7 @@ function NewPlan({sample,userId,invalidSample}) {
       } else navigate('/user/plans',{replace:true,state:{planCreated:true}});
     } finally {pending.current=false;setSubmitting(false);}
   }
-  return <section className="user-plan-page account-page" aria-labelledby="create-plan-heading">
+  return <section className="user-plan-page account-page plan-create-page" aria-labelledby="create-plan-heading">
     <div className="account-heading"><div><h1 id="create-plan-heading">Create Photography Plan</h1><p>{sample ? `Inspired by ${sample.title}. Edit any detail before saving.` : 'Capture the details for your upcoming photography session.'}</p></div><Link className="account-secondary" to="/user/plans">My Plans</Link></div>
     {invalidSample && <p role="status">That inspiration is unavailable. You can create a plan from scratch or <Link to="/user/explore">browse Explore</Link>.</p>}
     {storageNotice && <p role="status">{storageNotice}</p>}
@@ -51,7 +51,7 @@ function NewPlan({sample,userId,invalidSample}) {
         <p>Generation starts only after your confirmation on the AI page, subject to your existing allowance.</p>
       </fieldset>
       <div onChange={event=>{const {name,value}=event.target;if (name && Object.hasOwn(values.current,name)) {values.current={...values.current,[name]:value};persist();}}}>
-        <PlanForm initialValues={draft.values} onSubmit={submit} submitting={submitting} submitLabel={action==='save'?'Save Project':'Save & Continue to AI'} />
+        <PlanForm compact initialValues={draft.values} onSubmit={submit} submitting={submitting} submitLabel={action==='save'?'Save Project':'Save & Continue to AI'} />
       </div>
     </div>
   </section>;

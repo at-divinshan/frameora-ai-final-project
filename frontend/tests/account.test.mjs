@@ -36,7 +36,7 @@ export function lockedHero() {
  const plain=hero.replace(/<[^>]+>/g,'');
  for(const text of ['AI POWERED PHOTOGRAPHY PLATFORM','Create Beautiful Moments with AI','From shoot planning to pose ideas and AI-generated visuals, Frameora AI helps you capture every moment better.','Get Started','Login']) assert.ok(plain.includes(text),text);
  assert.ok(hero.includes('href="/register"')); assert.ok(hero.includes('href="/login"'));
- assert.ok(hero.includes('/images/landing/hero-dark.png'));
+ assert.ok(hero.includes('public-home-hero')); // Artwork is now a theme-aware CSS background.
  assert.ok(!hero.includes('Turn Your Moments'));
 }
 export function adminNavigation() {
@@ -116,7 +116,7 @@ export function planRendering() {
  {code:'trial',name:'Free Trial',price:'0',currency:'LKR',credits:100,max_projects:10,max_share_links:20,trial_days:14,credit_period:'trial_total',activation_available:true},
  {code:'pro',name:'Paid Pro',price:'1500',currency:'LKR',credits:500,max_projects:50,max_share_links:100,activation_available:false}];
  const html=renderToStaticMarkup(<PlanCards plans={plans} status={{plan:'basic',trial_available:true}} activate={()=>{}} />);
- for(const text of ['Free Basic','Free Trial','Paid Pro','Start Free Trial','Current plan','Paid activation unavailable','100 credits total','14 days','no carryover']) assert.ok(html.includes(text),text);
+ for(const text of ['Free Basic','Free Trial','Paid Pro','Start Free Trial','Current plan','Payment setup pending','100 credits total','14 days','no carryover']) assert.ok(html.includes(text),text);
  const used=renderToStaticMarkup(<PlanCards plans={plans} status={{plan:'basic',trial_available:false}} activate={()=>{}} />);
  assert.ok(used.includes('lifetime trial has already been used'));
 }

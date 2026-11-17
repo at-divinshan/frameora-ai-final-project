@@ -67,6 +67,7 @@ def create_access_token(user_id: str, remember_me: bool, auth_version: int | Non
     claims = {
             "sub": str(user_id), "iat": now, "nbf": now, "exp": now + lifetime,
             "iss": JWT_ISSUER, "aud": JWT_AUDIENCE, "type": "access",
+            "jti": token_urlsafe(24),
         }
     if account_version is not None:
         claims["account_version"] = account_version
@@ -74,8 +75,6 @@ def create_access_token(user_id: str, remember_me: bool, auth_version: int | Non
         if type(auth_version) is not int or not 0 <= auth_version <= 2**64 - 1:
             raise HTTPException(503, "Authentication is unavailable.")
         claims["auth_version"] = auth_version
-        # Distinguish separately issued sessions even within the same second.
-        claims["jti"] = token_urlsafe(24)
     token = jwt.encode(
         claims,
         secret,

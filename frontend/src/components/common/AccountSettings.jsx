@@ -1,3 +1,5 @@
+import api from '../../services/api';
+import PasswordManagement from './PasswordManagement';
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
@@ -54,8 +56,14 @@ export default function AccountSettings() {
 }
 
 export function AccountSecurity({ profile }) {
+  const [capabilities, setCapabilities] = useState(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    api.get('/auth/password/capabilities', { signal: controller.signal }).then(({data}) => setCapabilities(data)).catch(() => {});
+    return () => controller.abort();
+  }, [profile.id]);
   return <>
-        {profile.has_password ? <><h3>Password</h3><p>Secure password changes are not available yet. Continue using your existing password to sign in.</p><Button disabled>Change password — unavailable</Button></> : profile.role !== "admin" ? <><h3>Set a password</h3><p>Password setup is not available yet. Once enabled, fresh Google identity verification will be required.</p><Button disabled>Verify with Google and set password — unavailable</Button></> : <p>Password management is not available yet.</p>}
+        {capabilities?.change_password ? <PasswordManagement /> : capabilities?.google_password_setup ? <PasswordManagement verify /> : profile.has_password ? <><h3>Password</h3><p>Secure password changes are not available yet. Continue using your existing password to sign in.</p><Button disabled>Change password — unavailable</Button></> : profile.role !== "admin" ? <><h3>Set a password</h3><p>Password setup is not available yet. Once enabled, fresh Google identity verification will be required.</p><Button disabled>Verify with Google and set password — unavailable</Button></> : <p>Password management is not available yet.</p>}
         {profile.role !== "admin" && <div className="account-security-method"><h3>Google account</h3>{profile.google_linked ? <p>Google is connected to your account.</p> : profile.has_password ? <><p>Link explicitly using your current password and consent. Your account role stays the same.</p><Link className="account-secondary" to="/auth/google/link">Link Google account</Link></> : <p>Google linking is unavailable for this account.</p>}</div>}
   </>;
 }

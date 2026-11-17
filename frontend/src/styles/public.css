@@ -923,3 +923,48 @@
   }
   .public-home-hero-dark::after { mask-image: linear-gradient(to bottom, transparent 90%, #000 96%, transparent); }
 }
+
+/* Landing-only refinements; shared public pages and navigation stay unchanged. */
+.public-landing { font-size: 16px; }
+.public-landing .public-container { width: min(1280px, calc(100% - 48px)); }
+.public-landing .public-home-hero::before { opacity: .86; background-size: 76vw auto; }
+.public-landing .public-home-hero-dark::after { opacity: .86; }
+.public-landing .public-hero-copy > p { font-size: 17px; }
+.public-landing .public-home-hero h1 { font-size: clamp(35px, calc(3.5vw + 1px), 51px); }
+.public-landing h3 { font-size: 19px; }
+.public-landing .public-button { font-size: 15px; }
+@media (min-width: 1001px) {
+  .public-landing .public-hero-copy { transform: translateY(24px); }
+}
+@media (max-width: 1000px) {
+  .public-landing .public-home-hero::before { background-size: 88vw auto; }
+  .public-landing .public-home-hero h1 { font-size: clamp(31px, calc(4vw + 1px), 39px); }
+}
+@media (max-width: 760px) {
+  .public-landing .public-container { width: calc(100% - 32px); }
+  .public-landing .public-home-hero::before { background-size: 100% auto; }
+  .public-landing .public-home-hero h1 { font-size: clamp(31px, calc(7vw + 1px), 45px); }
+  .public-landing .public-hero-copy > p { font-size: 16px; }
+}
+
+/* One hero region includes the complete feature row; its height follows content. */
+.public-landing .public-home-hero { padding: 48px 0 24px; }
+.public-landing .public-home-hero::before {
+  inset: 0; height: auto; bottom: 0;
+  opacity: .5; background-size: 100% auto; background-position: center center;
+  mask-image: linear-gradient(to bottom, transparent, #000 8%, #000 94%, transparent);
+}
+.public-landing .public-home-hero::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  opacity: 1; mask-image: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--hero-wash) 38%, transparent), transparent 75%);
+}
+.public-landing .public-feature-strip { margin-top: 28px; }
+.public-landing .public-hero-copy { transform: none; }
+.public-landing .public-feature-strip h3 { font-size: 15px; }
+.public-landing .public-feature-strip p { font-size: 13px; }
+@media (max-width: 760px) {
+  .public-landing .public-home-hero { padding: 28px 0 20px; }
+  .public-landing .public-home-hero::before { background-position: center top; background-size: 100% auto; }
+  .public-landing .public-feature-strip { margin-top: 24px; }
+}

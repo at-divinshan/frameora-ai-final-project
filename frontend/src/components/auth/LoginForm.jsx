@@ -56,13 +56,13 @@ export default function LoginForm({ redirectTo }) {
     <>
       <div className="form-heading"><h1>Welcome Back</h1><p>Sign in to continue</p></div>
       {error && <div className="form-alert" role="alert">{error}</div>}
+      {error === 'Please verify your email before signing in.' && <p className="auth-switch"><Link to="/verify-email" state={{ email: values.email.trim() }}>Resend verification email</Link></p>}
       {message && <div className="form-success" role="status">{message}</div>}
       <form onSubmit={submit} noValidate>
         <Input icon={<Mail size={22} />} id="login-email" name="email" label="Email address" type="email" autoComplete="username" placeholder="you@example.com" value={values.email} onChange={change} error={errors.email} />
         <Input icon={<LockKeyhole size={22} />} id="login-password" name="password" label="Password" type="password" autoComplete="current-password" value={values.password} onChange={change} error={errors.password} />
         <div className="form-options">
           <label className="remember-checkbox"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />Remember me</label>
-          <Link to="/forgot-password">Forgot password?</Link>
         </div>
         <Button type="submit" loading={loading} disabled={googleBusy} className="full-width">Login <ArrowRight size={20} aria-hidden="true" /></Button>
       </form>

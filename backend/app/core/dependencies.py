@@ -4,10 +4,10 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.core.security import decode_access_token
 from app.core.security import auth_versions_enabled, decode_access_claims
 from app.core.auth_version import check_version
 from app.core import account_state
+from app.services.session_revocation import require_not_revoked
 from app.database.connection import get_db
 from app.models.user import User
 from app.repositories.user_repository import find_by_id
@@ -28,14 +28,19 @@ def get_current_user(
     )
     if credentials is None:
         raise unauthorized
-    account_checks = account_state.enabled(db)
-    claims = decode_access_claims(credentials.credentials) if auth_versions_enabled() or account_checks else None
-    subject = claims["sub"] if claims is not None else decode_access_token(credentials.credentials)
+    # Reject untrusted tokens and invalid account identifiers before any DB work.
+    claims = decode_access_claims(credentials.credentials)
+    subject = claims["sub"]
     if not subject.isascii() or not subject.isdecimal() or len(subject) > 10:
         raise unauthorized
     user_id = int(subject)
     if not 1 <= user_id <= 2147483647:
         raise unauthorized
+    account_version = claims.get("account_version", 0)
+    if type(account_version) is not int or not 0 <= account_version <= 2147483647:
+        raise unauthorized
+    require_not_revoked(credentials.credentials)
+    account_checks = account_state.enabled(db)
     user = find_by_id(db, user_id)
     if user is None or user.role not in SUPPORTED_ROLES:
         raise unauthorized

@@ -447,3 +447,28 @@
 
 .user-plan-textarea { width: 100%; min-width: 0; box-sizing: border-box; resize: vertical; padding: 12px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-panel); color: var(--text-main); font: inherit; line-height: 1.6; }
 .user-plan-preference-list dd { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Opt-in create layout; existing edit/detail forms retain their presentation. */
+.user-plan-form:not(.plan-create-columns) > .plan-create-details,
+.user-plan-form:not(.plan-create-columns) > .plan-create-preferences { display: contents; }
+.plan-create-page { max-width: 1280px; width: 100%; margin-inline: auto; min-width: 0; }
+.plan-create-page .user-plan-form-card { max-width: none; padding: 0; border: 0; background: transparent; }
+.plan-create-page .explore-options { padding: 14px 18px; margin: 0 0 16px; min-width: 0; border: 1px solid var(--dashboard-line); border-radius: 12px; background: var(--dashboard-sidebar); grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px 20px; }
+.plan-create-page .explore-options p { grid-column: 1 / -1; margin: 0; }
+.plan-create-columns { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; align-items: start; }
+.plan-create-columns > section { min-width: 0; padding: 18px; border: 1px solid var(--dashboard-line, var(--account-border)); border-radius: 14px; background: var(--dashboard-sidebar, var(--account-panel)); }
+.plan-create-columns > section > h2 { margin: 0 0 14px; font-size: 18px; }
+.plan-create-columns > button, .plan-create-columns > p { grid-column: 1 / -1; }
+.plan-create-columns .form-field { margin-bottom: 12px; min-width: 0; }
+.plan-create-columns .form-field > label { margin-bottom: 5px; }
+.plan-create-columns input, .plan-create-columns select { min-height: 44px; box-sizing: border-box; }
+.plan-create-columns textarea { min-height: 90px; }
+.plan-create-columns .user-plan-equipment { min-width: 0; margin: 12px 0; padding: 12px; }
+@media(max-width: 900px) {
+  .plan-create-columns, .plan-create-page .explore-options { grid-template-columns: minmax(0,1fr); }
+  .plan-create-columns > section { padding: 14px; }
+}
+
+/* The dialog scrolls independently on short screens and at browser zoom. */
+.user-plan-delete-dialog { max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow-y: auto; overflow-wrap: anywhere; overscroll-behavior: contain; }
+.user-plan-dialog-actions { position: sticky; bottom: 0; flex-wrap: wrap; padding-block: 10px; background: var(--dashboard-sidebar); }

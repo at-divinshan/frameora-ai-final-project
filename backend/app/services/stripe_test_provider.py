@@ -36,7 +36,8 @@ def verify_event(raw, signature, secret, *, now=None):
                 obj[key] = value
             return obj
         event = json.loads(raw, object_pairs_hook=unique_object)
-        if (not isinstance(event, dict) or event.get('livemode') is not False
+        if (not isinstance(event, dict) or event.get('object') not in (None, 'event')
+                or event.get('livemode') is not False
                 or not re.fullmatch(r'evt_[A-Za-z0-9]+', event.get('id', ''))
                 or not isinstance(event.get('type'), str)
                 or not isinstance(event.get('data', {}).get('object'), dict)):

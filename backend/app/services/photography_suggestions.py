@@ -118,7 +118,15 @@ async def get_plan_suggestions(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=PLAN_NOT_FOUND)
 
     prompt = build_suggestions_prompt(plan)
-    response = await provider.generate(prompt)
-    if isinstance(response, PhotographySuggestions):
-        return response
-    return PhotographySuggestions.model_validate(response)
+    from app.services import suggestion_protection
+    import asyncio
+    lease = suggestion_protection.acquire(user.id)
+    try:
+        response = await asyncio.wait_for(provider.generate(prompt), timeout=180)
+        if isinstance(response, PhotographySuggestions):
+            return response
+        return PhotographySuggestions.model_validate(response)
+    except asyncio.TimeoutError:
+        raise HTTPException(504, 'Suggestions timed out. Please try again later.') from None
+    finally:
+        suggestion_protection.release(lease)

@@ -27,6 +27,17 @@ def reject():
     raise HTTPException(409, 'Payment verification did not match the saved purchase.')
 
 
+def checkout_reference(obj):
+    metadata = obj.get('metadata')
+    if not isinstance(metadata, dict): reject()
+    value = metadata.get('checkout_id')
+    if not isinstance(value, str) or not value.isascii() or not value.isdigit() or len(value) > 20:
+        reject()
+    identifier = int(value)
+    if not 0 < identifier < 2**64: reject()
+    return identifier
+
+
 def verify_metadata(obj, purchase):
     expected = checkout_metadata(purchase)
     if obj.get('metadata') != expected: reject()
@@ -72,8 +83,7 @@ def process_event(event, raw, repository, provider):
     obj=event['data']['object']
     if kind.startswith('checkout.session.'):
         # Event metadata is a lookup hint only; authoritative objects are fetched next.
-        try: checkout_id=int(obj.get('metadata',{}).get('checkout_id',''))
-        except (ValueError,TypeError): reject()
+        checkout_id=checkout_reference(obj)
         purchase=repository.get_purchase(checkout_id)
         verified=verify_paid(provider,purchase,obj.get('id'))
     else:
@@ -82,8 +92,7 @@ def process_event(event, raw, repository, provider):
         if charge.get('livemode') is not False: reject()
         intent=provider.retrieve('payment_intents',charge.get('payment_intent'))
         if intent.get('livemode') is not False: reject()
-        try: checkout_id=int(intent.get('metadata',{}).get('checkout_id',''))
-        except (ValueError,TypeError): reject()
+        checkout_id=checkout_reference(intent)
         purchase=repository.get_purchase(checkout_id)
         verify_metadata(intent,purchase)
         if (charge.get('amount')!=purchase.amount_minor or charge.get('currency')!=purchase.currency

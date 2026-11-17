@@ -134,12 +134,12 @@ class AdminUserTests(unittest.TestCase):
             token=complete(fresh).access_token
             self.assertEqual(self.client.get('/auth/me',headers={'Authorization':'Bearer '+token}).status_code,200)
 
-    def test_missing_migration_preserves_login_but_management_is_unavailable(self):
+    def test_missing_security_schema_blocks_management_and_protected_access(self):
         AccountStatusAudit.__table__.drop(self.engine);AccountStatus.__table__.drop(self.engine)
         response=self.client.get('/admin/users',headers=self.admin)
         self.assertEqual(response.status_code,503)
-        self.assertEqual(response.json()['detail']['code'],'ADMIN_USERS_SCHEMA_UNAVAILABLE')
-        self.assertEqual(self.client.get('/auth/me',headers=self.customer).status_code,200)
+        self.assertEqual(response.json()['detail'],'Required account security schema is unavailable.')
+        self.assertEqual(self.client.get('/auth/me',headers=self.customer).status_code,503)
 
     def test_listing_without_optional_auth_version_column(self):
         # Reproduce the deployed legacy User schema, in disposable SQLite only.

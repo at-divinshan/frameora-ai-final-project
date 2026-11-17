@@ -76,8 +76,19 @@ def checkout(user, request, db=None):
 
 
 def receive_webhook(raw=b'', signature='', db=None):
-    repository, provider, config = runtime(db)
+    from app.core.stripe_test import require_release
     from app.services.stripe_test_provider import verify_event
     from app.services.payment_processing import process_event
+    config = require_release()
     event = verify_event(raw, signature, config.webhook_secret)
-    return process_event(event, raw, repository, provider)
+
+    def apply(session):
+        repository, provider, _ = runtime(session)
+        return process_event(event, raw, repository, provider)
+
+    if db is not None:
+        return apply(db)
+    # Even session creation waits until the bounded payload has a valid signature.
+    from app.database.connection import SessionLocal
+    with SessionLocal() as session:
+        return apply(session)

@@ -102,3 +102,8 @@ class NewPassword(BaseModel):
 
 class PasswordChange(NewPassword):
     current_password: str = Field(min_length=1, max_length=128, repr=False)
+
+
+class RegistrationResponse(AuthUser):
+    status: Literal["verification_required"] = "verification_required"
+    email_sent: bool

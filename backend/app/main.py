@@ -15,6 +15,7 @@ from app.models.ai_generation import AIGeneration
 # runtime. Declarative imports only populate metadata; they never execute DDL.
 from app.models.payment import Payment
 from app.models.payment_preparation import PaymentCheckout, PaymentWebhookEvent, PaidCreditAllocation
+from app.middleware.security_headers import SecurityHeaders
 from app.middleware.ai_upload_limit import AIUploadLimit
 from app.middleware.live_pose_limit import LivePoseUploadLimit
 from app.core.config import settings
@@ -23,6 +24,7 @@ from app.routers.notifications import router as notifications_router
 from app.routers.feedback import router as feedback_router
 from app.routers.live_pose import router as live_pose_router
 from app.routers.auth import router as auth_router
+from app.routers.email_verification import router as email_verification_router
 from app.routers.admin_users import router as admin_users_router
 from app.routers.admin import router as admin_router
 from app.routers.google_auth import router as google_auth_router
@@ -105,10 +107,12 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+app.add_middleware(SecurityHeaders)
 app.include_router(notifications_router)
 app.include_router(feedback_router)
 app.include_router(live_pose_router)
 app.include_router(auth_router)
+app.include_router(email_verification_router)
 app.include_router(admin_router)
 app.include_router(admin_users_router)
 app.include_router(google_auth_router)

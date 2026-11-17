@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { dismissWithEscape } from '../../utils/keyboardDismiss';
+import { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { BarChart3, Bell, Building2, CreditCard, FolderOpen, House, LogOut, Menu, Moon, Plus, Search, Settings, Sun, Users, UserRound, X } from "lucide-react";
 import AccountAvatar from "../common/AccountAvatar";
@@ -22,6 +23,7 @@ const navigation = [
 export default function AdminLayout({ children, title = "Manage Users & Studio Owners" }) {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const menuTrigger = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const dark = theme === "dark";
   const { pathname, hash } = useLocation();
@@ -34,10 +36,10 @@ export default function AdminLayout({ children, title = "Manage Users & Studio O
   return (
     <div className="admin-dashboard">
       <a className="admin-skip-link" href="#admin-dashboard-content">Skip to content</a>
-      <aside className="admin-sidebar">
+      <aside className="admin-sidebar" onKeyDown={event => dismissWithEscape(event, menuOpen, () => setMenuOpen(false), menuTrigger, true)}>
         <div className="admin-brand-row">
           <Link to="/admin/dashboard" aria-label="Frameora Admin dashboard"><FrameoraLogo /></Link>
-          <button className="admin-icon-button admin-menu-toggle" type="button" aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+          <button ref={menuTrigger} className="admin-icon-button admin-menu-toggle" type="button" aria-label={menuOpen ? "Close navigation" : "Open navigation"}
             aria-expanded={menuOpen} aria-controls="admin-navigation" onClick={() => setMenuOpen((open) => !open)}>
             {menuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>

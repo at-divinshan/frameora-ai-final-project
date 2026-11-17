@@ -36,7 +36,7 @@ export default function ProjectDetails() {
       throw e;
     }
   }
-  return <AccountLayout><section className="customer-project-page">
+  return <AccountLayout><section className="customer-project-page owner-project-details">
     <header className="account-heading"><div><h1>Photoshoot</h1><p>Review and update your customer’s shoot.</p></div><Link className="account-secondary" to="/owner/projects">All Photoshoots</Link></header>
     {state?.photoshootReady && <div className="account-notice" role="status">Your images are ready. Preview the gallery below, then share with your customer.</div>}
     {(success || state?.projectCreated) && <div className="account-notice" role="status">{success || 'Project created successfully.'}</div>}

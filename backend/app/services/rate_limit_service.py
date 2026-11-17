@@ -15,7 +15,9 @@ from app.services.oauth_transaction_store import LIMIT
 def client():
     url = urlsplit(settings.redis_url)
     if url.scheme not in ("redis", "rediss") or not url.hostname or (
-        url.scheme == "redis" and url.hostname not in ("localhost", "127.0.0.1", "::1")
+        url.scheme == "redis" and url.hostname not in (
+            "localhost", "127.0.0.1", "::1", "redis.railway.internal"
+        )
     ):
         raise ValueError()
     return Redis.from_url(settings.redis_url, decode_responses=True,

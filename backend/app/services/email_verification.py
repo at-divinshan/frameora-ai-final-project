@@ -66,7 +66,7 @@ def prerequisites(db, *, require_delivery=True):
     from sqlalchemy import inspect
     from app.models.user import User
     from app.core.account_state import enabled
-    from app.services.gmail_auth_email import GmailAuthEmailDelivery
+    from app.services.auth_email_delivery import email_delivery
     try:
         inspector = inspect(db.connection())
         columns = {c['name']: c for c in inspector.get_columns('User')}
@@ -74,7 +74,7 @@ def prerequisites(db, *, require_delivery=True):
             if name not in User.__table__.c or name not in columns or columns[name]['nullable']:
                 raise ValueError()
         enabled(db)
-        delivery = GmailAuthEmailDelivery() if require_delivery else None
+        delivery = email_delivery() if require_delivery else None
         if client().ping() is not True: raise ValueError()
         return delivery
     except Exception:

@@ -23,9 +23,9 @@ def readiness(response: Response, request: Request, db=Depends(get_db)):
     try: service.prerequisites(db, require_delivery=False)
     except HTTPException:
         return {'available': False, 'message': 'Email verification is temporarily unavailable.'}
-    from app.services.gmail_auth_email import GmailAuthEmailDelivery
+    from app.services.auth_email_delivery import email_delivery
     try:
-        GmailAuthEmailDelivery()
+        email_delivery()
         delivery_available = True
     except HTTPException:
         delivery_available = False

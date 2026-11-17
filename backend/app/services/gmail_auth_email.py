@@ -2,7 +2,7 @@
 from dataclasses import dataclass, field
 from email.message import EmailMessage
 from email.utils import formataddr
-from html import escape
+from app.services.verification_email_content import SUBJECT, content
 import smtplib
 import ssl
 from urllib.parse import urlsplit
@@ -55,16 +55,12 @@ class GmailAuthEmailDelivery:
             raise HTTPException(503, 'Verification email is unavailable.')
         try:
             message = EmailMessage()
-            message['Subject'] = 'Verify your Frameora AI email'
+            message['Subject'] = SUBJECT
             message['From'] = formataddr(('Frameora AI', self.config.username))
             message['To'] = recipient
-            message.set_content('Welcome to Frameora AI!\n\nConfirm your email address:\n' + link +
-                                '\n\nThis link expires in 30 minutes and can be used once. Verification does not sign you in.\nIf you did not request this account, ignore this email.')
-            message.add_alternative('<html><body><h1>Frameora AI</h1><h2>Confirm your email</h2>'
-                '<p>Welcome! Verify your email address to finish setting up your account.</p>'
-                f'<p><a href="{escape(link, quote=True)}">Verify email address</a></p>'
-                '<p>This link expires in 30 minutes and can be used once. You will then sign in normally.</p>'
-                '<p>If you did not request this account, ignore this email.</p></body></html>', subtype='html')
+            plain, html = content(link)
+            message.set_content(plain)
+            message.add_alternative(html, subtype='html')
             with smtplib.SMTP(self.config.host, self.config.port, timeout=self.config.timeout) as smtp:
                 smtp.ehlo()
                 smtp.starttls(context=ssl.create_default_context())

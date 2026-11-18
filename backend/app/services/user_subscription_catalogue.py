@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-CATALOGUE_PATH = Path(__file__).resolve().parents[3] / 'user-subscription-plans.json'
+CATALOGUE_PATH = Path(__file__).resolve().parents[2] / 'user-subscription-plans.json'
 
 
 def catalogue():

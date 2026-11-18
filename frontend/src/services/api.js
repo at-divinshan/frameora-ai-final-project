@@ -21,6 +21,12 @@ export function setUnauthorizedHandler(handler) {
 }
 
 api.interceptors.request.use((config) => {
+  // Keep OAuth browser cookies on the frontend origin in production.
+  // Other APIs and local development retain the configured backend URL.
+  if (import.meta.env.PROD && config.url?.startsWith("/auth/google/")) {
+    config.baseURL = window.location.origin + "/oauth-api";
+    config.withCredentials = true;
+  }
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
   return config;
 });

@@ -11,6 +11,14 @@
       "continue": true
     },
     {
+      "src": "/oauth-api/auth/google/(start|callback|complete|register|link/start|link/complete|password-setup/start|password-setup/complete)",
+      "dest": "https://frameora-ai-final-project-production.up.railway.app/auth/google/$1",
+      "headers": {
+        "Cache-Control": "no-store",
+        "Pragma": "no-cache"
+      }
+    },
+    {
       "handle": "filesystem"
     },
     {

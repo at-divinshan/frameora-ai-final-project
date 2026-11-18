@@ -46,14 +46,22 @@ def require_configuration():
                     raise ValueError()
         if origin.path or "*" in origin.netloc or (origin.scheme, origin.netloc) != (completion.scheme, completion.netloc):
             raise ValueError()
-        if callback.path != "/auth/google/callback":
+        if callback.path == "/oauth-api/auth/google/callback":
+            # Fixed public proxy path. Do not derive callback URLs from forwarded headers.
+            if callback.scheme != "https" or (callback.scheme, callback.netloc) != (origin.scheme, origin.netloc):
+                raise ValueError()
+            if completion.path != "/auth/google/callback":
+                raise ValueError()
+        elif callback.path != "/auth/google/callback":
+            raise ValueError()
+        if (callback.scheme, callback.netloc, callback.path) == (completion.scheme, completion.netloc, completion.path):
             raise ValueError()
         # Disabling Secure is exclusively for loopback development.
         if not settings.oauth_cookie_secure and any(u.hostname not in ("localhost", "127.0.0.1") for u in (callback, origin)):
             raise ValueError()
         if redis.scheme not in ("redis", "rediss") or not redis.hostname:
             raise ValueError()
-        if redis.scheme == "redis" and redis.hostname not in ("localhost", "127.0.0.1", "::1"):
+        if redis.scheme == "redis" and redis.hostname not in ("localhost", "127.0.0.1", "::1", "redis.railway.internal"):
             raise ValueError()
         from cryptography.fernet import Fernet
         Fernet(settings.oauth_transaction_key.encode("ascii"))

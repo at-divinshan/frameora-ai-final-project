@@ -60,7 +60,8 @@ class PaymentRepository:
             SubscriptionPlan.user_role==role,SubscriptionPlan.is_active.is_(True)))
         if (plan is None or plan.name!=expected.name or plan.monthly_credits!=expected.credits
                 or plan.price*100!=expected.amount_minor or plan.currency!='LKR'
-                or plan.max_projects!=expected.max_projects or plan.max_share_links!=expected.max_share_links):
+                or plan.max_projects!=expected.max_projects or plan.max_share_links!=expected.max_share_links
+                or plan.trial_days is not None):
             raise HTTPException(503,'Paid catalogue has not been verified.')
         return plan
 

@@ -62,28 +62,28 @@ def require_schema(db):
 
 def plans(db):
     rows = list(db.scalars(select(SubscriptionPlan).where(SubscriptionPlan.user_role == 'owner', SubscriptionPlan.is_active.is_(True))))
-    result = {p.code: p for p in rows if p.code in ('basic', 'trial', 'pro')}
-    expected = [
-        ('basic', 'Free Basic', 10, 0, None, 2, 3),
-        ('trial', 'Free Trial', 100, 0, 14, 10, 20),
-        ('pro', 'Paid Pro', 500, 1500, None, 50, 100),
-    ]
-    for code, name, credits, price, days, max_projects, max_links in expected:
-        p = result.get(code)
-        if (p is None or p.name != name or p.monthly_credits != credits or p.price != price
-                or p.trial_days != days or p.currency != 'LKR'
-                or ((p.max_projects, p.max_share_links) != (max_projects, max_links)
-                    and not (code == 'trial' and p.max_projects is None and p.max_share_links is None))):
+    def matches(p, expected):
+        return (p.name == expected.name and p.monthly_credits == expected.credits
+                and p.price == expected.price and p.currency == expected.currency
+                and p.max_projects == expected.max_projects
+                and p.max_share_links == expected.max_share_links
+                and p.trial_days == expected.trial_days)
+
+    result = {}
+    for code in ('basic', 'trial'):
+        p = next((p for p in rows if p.code == code), None)
+        if p is None or not matches(p, BY_CODE[code]):
             raise HTTPException(503, "Subscription catalogue is unavailable.")
-    # Recognize only exact approved paid rows; this does not authorize activation.
+        result[code] = p
     for p in rows:
-        if p.code in PAID_CODES:
-            expected = BY_CODE[p.code]
-            if (p.name == expected.name and p.monthly_credits == expected.credits
-                    and p.price == expected.price and p.currency == 'LKR'
-                    and p.max_projects == expected.max_projects and p.max_share_links == expected.max_share_links
-                    and p.trial_days is None):
-                result[p.code] = p
+        # Optional historical catalogue entry; never enables legacy paid activation.
+        if (p.code == 'pro' and p.name == 'Paid Pro' and p.monthly_credits == 500
+                and p.price == 1500 and p.currency == 'LKR' and p.trial_days is None
+                and p.max_projects == 50 and p.max_share_links == 100):
+            result[p.code] = p
+        # Recognize only exact approved paid rows; this does not authorize activation.
+        elif p.code in PAID_CODES and matches(p, BY_CODE[p.code]):
+            result[p.code] = p
     return result
 
 

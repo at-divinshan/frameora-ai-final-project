@@ -472,3 +472,21 @@
 /* The dialog scrolls independently on short screens and at browser zoom. */
 .user-plan-delete-dialog { max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow-y: auto; overflow-wrap: anywhere; overscroll-behavior: contain; }
 .user-plan-dialog-actions { position: sticky; bottom: 0; flex-wrap: wrap; padding-block: 10px; background: var(--dashboard-sidebar); }
+
+/* Phone navigation uses the existing disclosure, never a desktop side rail. */
+@media (max-width: 760px) {
+  .user-dashboard, .owner-dashboard, .admin-dashboard { grid-template-columns: minmax(0, 1fr); }
+  .user-dashboard-navigation, .owner-navigation, .admin-navigation {
+    max-height: calc(100dvh - 72px); overflow-y: auto; overscroll-behavior: contain;
+  }
+  .user-dashboard-nav-item, .owner-nav-item, .admin-nav-item { min-width: 0; overflow-wrap: anywhere; }
+  .user-dashboard-account-controls, .owner-navbar-controls, .admin-navbar-controls { min-width: 0; }
+  .owner-account > div, .admin-account > div { min-width: 0; }
+  .user-dashboard-account-name, .owner-account strong, .admin-account strong { max-width: 100%; }
+  .user-dashboard-account, .owner-account, .admin-account { flex: 1; }
+}
+@media (max-width: 430px) {
+  .user-dashboard-navigation nav, .owner-navigation nav, .admin-navigation nav { grid-template-columns: minmax(0, 1fr); }
+  .user-dashboard-content, .owner-content, .admin-content { padding-inline: 12px; }
+  .user-dashboard-navbar, .owner-navbar, .admin-navbar { padding-inline: 12px; }
+}

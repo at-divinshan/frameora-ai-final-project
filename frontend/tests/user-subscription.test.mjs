@@ -62,6 +62,23 @@ try {
   assert.ok(ownerUpgrade.includes("one-time Free Trial: 100 credits for 14 days"));
   assert.ok(!ownerUpgrade.includes('disabled=""'));
 
+  for (const plan of ['starter', 'pro']) {
+    const status = { plan, period_end: '2027-01-01T00:00:00' };
+    const active = renderToStaticMarkup(React.createElement(SubscriptionPlanCards, {
+      readiness: {checkout_available:true, paid_activation_available:true}, status,
+    }));
+    assert.equal((active.match(/Current Plan</g) || []).length, 1);
+    assert.equal((active.match(/disabled=""/g) || []).length, 3);
+    assert.ok(active.includes('Available After Your Current Plan Ends'));
+    const blocked = renderToStaticMarkup(React.createElement(StudioOwnerUpgradeCard, { status }));
+    assert.ok(blocked.includes('disabled=""'));
+    assert.ok(blocked.includes('Paid credits cannot be transferred'));
+  }
+  const expired = renderToStaticMarkup(React.createElement(SubscriptionPlanCards, {
+    readiness: {checkout_available:true, paid_activation_available:true}, status: {plan:'free'},
+  }));
+  assert.equal((expired.match(/Continue to Stripe Test Checkout/g) || []).length, 2);
+
   const requests = [];
   api.defaults.adapter = async (config) => {
     requests.push(config);

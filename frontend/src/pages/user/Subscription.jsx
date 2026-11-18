@@ -9,6 +9,7 @@ import "../../styles/account.css";
 import "../../styles/ai.css";
 
 export function SubscriptionPlanCards({ readiness, status, busy, checkout } = {}) {
+  const activePaid = ['starter', 'pro'].includes(status?.plan);
   return USER_SUBSCRIPTION_PLANS.map((plan) => (
     <article className="account-card user-subscription-card" key={plan.name}>
       <h2>{plan.name}</h2>
@@ -16,13 +17,14 @@ export function SubscriptionPlanCards({ readiness, status, busy, checkout } = {}
       <p>{plan.code === 'free' ? `${plan.free_images} generated images once per account` : `${plan.credits} AI credits per paid monthly period`}</p>
       {plan.code !== 'free' && <p className="ai-note">4 credits per four-image batch · No carryover · Available only after verified payment.</p>}
       <button className="user-dashboard-create-button" type="button" disabled={plan.code === 'free' || Boolean(busy) || !userCheckoutAllowed(readiness, status)} onClick={() => checkout(plan.code)}>
-        {plan.code === 'free' ? 'Included — once per account' : busy === plan.code ? 'Opening checkout…' : userCheckoutAllowed(readiness, status) ? 'Continue to Stripe Test Checkout' : readiness?.checkout_available ? 'Available after current paid period ends' : 'Coming Soon — Payment setup pending'}
+        {activePaid ? (status.plan === plan.code ? 'Current Plan' : 'Available After Your Current Plan Ends') : plan.code === 'free' ? 'Included — once per account' : busy === plan.code ? 'Opening checkout…' : userCheckoutAllowed(readiness, status) ? 'Continue to Stripe Test Checkout' : readiness?.checkout_available ? 'Available after current paid period ends' : 'Coming Soon — Payment setup pending'}
       </button>
     </article>
   ));
 }
 
-export function StudioOwnerUpgradeCard({ onUpgrade, busy, error }) {
+export function StudioOwnerUpgradeCard({ onUpgrade, busy, error, status }) {
+  const activePaid = ['starter', 'pro'].includes(status?.plan);
   return (
     <article className="account-card user-subscription-card user-owner-upgrade-card">
       <h2>Become Studio Owner</h2>
@@ -33,9 +35,10 @@ export function StudioOwnerUpgradeCard({ onUpgrade, busy, error }) {
         <li>Optional one-time Free Trial: 100 credits for 14 days</li>
       </ul>
       <p className="ai-note">Studio setup and a plan choice are required before the Studio Owner dashboard is available. The Free Trial starts only when you explicitly choose it.</p>
+      {activePaid && <p role="note">Your current paid plan ends {status.period_end ? utcDate(status.period_end) : 'at the end of your paid period'}. You can become a Studio Owner afterward. Paid credits cannot be transferred.</p>}
       {error && <p className="user-plan-message is-error" role="alert">{error}</p>}
-      <button className="user-dashboard-create-button" type="button" disabled={busy} onClick={onUpgrade}>
-        {busy ? "Upgrading account…" : "Upgrade to Studio Owner"}
+      <button className="user-dashboard-create-button" type="button" disabled={busy || activePaid} onClick={onUpgrade}>
+        {activePaid ? "Available After Your Current Plan Ends" : busy ? "Upgrading account…" : "Upgrade to Studio Owner"}
       </button>
     </article>
   );
@@ -112,7 +115,7 @@ export default function Subscription() {
         <button className="account-secondary" disabled={Boolean(checkoutBusy)} onClick={() => setRefresh(n => n + 1)}>Refresh subscription status</button>
         <div className="user-subscription-grid">
           <SubscriptionPlanCards {...payment} busy={checkoutBusy || busy} checkout={checkout} />
-          <StudioOwnerUpgradeCard onUpgrade={upgrade} busy={busy || Boolean(checkoutBusy)} error={error} />
+          <StudioOwnerUpgradeCard onUpgrade={upgrade} status={payment?.status} busy={busy || Boolean(checkoutBusy) || !payment?.status} error={error} />
         </div>
       </section>
     </DashboardLayout>

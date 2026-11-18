@@ -41,8 +41,8 @@ try {
   const service = await import(pathToFileURL(serviceFile));
   const ui = await import(pathToFileURL(uiFile));
   assert.deepEqual(ui.OWNER_GENERATION_CONTRACT, {
-    batchSize: 2,
-    batchCost: 2,
+    batchSize: 8,
+    batchCost: 8,
     requestTimeoutMs: 1300000,
   });
   const React = await import("react");
@@ -54,12 +54,12 @@ try {
     return { data: { id: 21, status: "completed", images: [] }, status: 200, headers: {}, config };
   };
 
-  test("testing mode displays two images and two credits while historical galleries remain supported", () => {
+  test("approved batch displays eight images and eight credits while historical galleries remain supported", () => {
     const html = renderToStaticMarkup(React.createElement(ui.OwnerGenerationConfirmation, {
-      entitlement: { remaining_credits: 10, batch_cost: 2, generation_allowed: true }, busy: false,
+      entitlement: { remaining_credits: 10, batch_cost: 8, generation_allowed: true }, busy: false,
     }));
-    assert.ok(html.includes("This batch generates 2 images and reserves 2 credits"));
-    assert.ok(html.includes("Confirm and generate (2 credits)"));
+    assert.ok(html.includes("This batch generates 8 images and reserves 8 credits"));
+    assert.ok(html.includes("Confirm and generate (8 credits)"));
     for (const count of [2, 4, 8]) {
       assert.equal(ui.isOwnerGalleryBatch(Array(count), ui.OWNER_GENERATION_CONTRACT, count), true);
       assert.equal(ui.isOwnerGalleryBatch(Array(count), { batchSize: 8, batchCost: 8 }, count), true);

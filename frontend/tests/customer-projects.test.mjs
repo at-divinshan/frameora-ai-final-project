@@ -108,8 +108,8 @@ try {
     const locked = render(false);
     assert.match(locked, /Open plan #4/);
     assert.match(locked, /Formal/);
-    assert.ok(!locked.includes('Generate 2 images'));
-    assert.match(render(true), /Generate 2 images \/ 2 credits/);
+    assert.ok(!locked.includes('Generate 8 images'));
+    assert.match(render(true), /Generate 8 images \/ 8 credits/);
     assert.match(render(true), /project=7&amp;plan=4/);
     assert.deepEqual(m.eligibleProjectPlans([plan, { id: 5, project_id: null }]), [{ id: 5, project_id: null }]);
   });

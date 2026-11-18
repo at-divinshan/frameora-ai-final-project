@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { dismissWithEscape } from "../../utils/keyboardDismiss";
+import { useState, useRef } from "react";
 import { Link, NavLink } from "react-router-dom";
 import {
   ArrowRight, Bell, Camera, ClipboardList, CreditCard, FolderOpen,
@@ -29,15 +30,16 @@ const navigation = [
 export default function OwnerLayout({ children }) {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const menuTrigger = useRef(null);
   const [navigationOpen, setNavigationOpen] = useState(false);
   const dark = theme === "dark";
   return (
     <div className="owner-dashboard">
       <a className="owner-skip-link" href="#owner-dashboard-content">Skip to content</a>
-      <aside className="owner-sidebar">
+      <aside className="owner-sidebar" onKeyDown={event => dismissWithEscape(event, navigationOpen, () => setNavigationOpen(false), menuTrigger, true)}>
         <div className="owner-brand-row">
           <Link to="/owner/dashboard" aria-label="Frameora Studio Owner dashboard"><FrameoraLogo /></Link>
-          <button className="owner-icon-button owner-menu-toggle" type="button"
+          <button ref={menuTrigger} className="owner-icon-button owner-menu-toggle" type="button"
             aria-label={navigationOpen ? "Close navigation" : "Open navigation"}
             aria-expanded={navigationOpen} aria-controls="owner-navigation"
             onClick={() => setNavigationOpen((open) => !open)}>

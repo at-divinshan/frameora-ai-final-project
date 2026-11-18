@@ -24,7 +24,7 @@ test('mobile navigation dismissal does not affect desktop navigation',()=>{
   }finally{if(previous===undefined)delete globalThis.window;else globalThis.window=previous;}
 });
 test('components wire local dismissal; loading and dialog safeguards remain present',async()=>{
-  for(const path of ['components/layout/Sidebar.jsx','components/layout/AdminLayout.jsx','components/common/NotificationBell.jsx']){
+  for(const path of ['components/layout/Sidebar.jsx','components/layout/AdminLayout.jsx','components/layout/OwnerLayout.jsx','components/common/NotificationBell.jsx']){
     const source=await readFile('src/'+path,'utf8');
     assert.match(source,/onKeyDown=.*dismissWithEscape/);assert.match(source,/ref=\{(?:menuTrigger|trigger)\}/);
   }

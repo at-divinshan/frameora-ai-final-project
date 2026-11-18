@@ -83,7 +83,7 @@ try {
     assert.ok(m.validatePhotoshoot({ ...values, customer_name: '  ' }).customer_name);
     assert.ok(m.validatePhotoshoot({ ...values, customization: { ...values.customization, outfit_details: '' } }).outfit_details);
     const html = renderToStaticMarkup(React.createElement(m.PhotoshootForm, { values, errors: {}, progress: {}, canCreate: true, referenceName: 'portrait.png' }));
-    for (const label of ['Customer', 'Photography plan', 'Image customization', 'Save Photoshoot', 'Save &amp; Generate 2 Images', 'confirm the 2-credit charge', 'Reference photo']) assert.ok(html.includes(label), label);
+    for (const label of ['Customer', 'Photography plan', 'Image customization', 'Save Photoshoot', 'Save &amp; Generate 8 Images', 'confirm the 8-credit charge', 'Reference photo']) assert.ok(html.includes(label), label);
     assert.equal((html.match(/<form/g) || []).length, 1);
     assert.match(html, /name="background_mode"/);
     assert.match(html, /name="camera_angle_mode"/);

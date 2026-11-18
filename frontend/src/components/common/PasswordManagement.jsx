@@ -29,7 +29,7 @@ export default function PasswordManagement({ setup = false, verify = false }) {
       setError(failure.response?.status === 429 ? 'Too many attempts. Please wait before trying again.' : setup ? 'Password setup could not be completed. Restart Google verification from Settings.' : typeof failure.response?.data?.detail === 'string' ? failure.response.data.detail : 'Password change could not be confirmed. Try signing in before retrying.');
     } finally { pending.current = false; setBusy(false); }
   }
-  return <form onSubmit={submit}>
+  return <form className="password-management-form" onSubmit={submit}>
     {verify ? <p>Verify your Google account before setting a password.</p> : <>
       {!setup && <label className="form-field">Current password<input className="form-input" name="current_password" type="password" autoComplete="current-password" required maxLength={128} disabled={busy}/></label>}
       <label className="form-field">New password<input className="form-input" name="new_password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} disabled={busy}/></label>

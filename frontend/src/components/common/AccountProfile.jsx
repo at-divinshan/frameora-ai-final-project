@@ -77,8 +77,22 @@ export default function AccountProfile() {
         <button className="account-secondary" disabled={busy || !profile.profile_image} onClick={() => mutate(removeProfilePicture, "Profile picture removed.", true)}>Remove picture</button>
       </section>
       <section className="account-card account-wide"><h2>Account information</h2><p>These account details are read-only.</p><dl className="account-details">
-        {[["Email", profile.email], ["Role", ROLE_LABELS[profile.role]], ["Verification", profile.is_verified ? "Verified" : "Not verified"], ["Joined", joinedDate(profile.created_at)], ["Account ID", profile.id], ["Sign-in methods", [profile.has_password && "Password", profile.role !== "admin" && profile.google_linked && "Google"].filter(Boolean).join(" · ") || "Not available"]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+        {accountInformation(profile).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
       </dl></section>
     </div>}
   </AccountLayout>;
+}
+
+export function accountInformation(profile) {
+  const fields = [
+    ["Email", profile.email],
+    ["Role", ROLE_LABELS[profile.role]],
+    ["Verification", profile.is_verified ? "Verified" : "Not verified"],
+  ];
+  if (profile.role !== "user") fields.push(
+    ["Joined", joinedDate(profile.created_at)],
+    ["Account ID", profile.id],
+    ["Sign-in methods", [profile.has_password && "Password", profile.role !== "admin" && profile.google_linked && "Google"].filter(Boolean).join(" · ") || "Not available"],
+  );
+  return fields;
 }

@@ -3,14 +3,12 @@ import PasswordManagement from './PasswordManagement';
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
-import useTheme from "../../hooks/useTheme";
 import AccountLayout from "../layout/AccountLayout";
 import Button from "./Button";
 import { getPrivacy, updatePrivacy, profileError } from "../../services/userService";
 
 export default function AccountSettings() {
   const { user, refreshProfile } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const [profile, setProfile] = useState(null);
   const [preferences, setPreferences] = useState(null);
   const [error, setError] = useState("");
@@ -37,18 +35,17 @@ export default function AccountSettings() {
     finally { locked.current = false; if (mounted.current) setBusy(false); }
   }
   return <AccountLayout title="Settings">
-    <div className="account-heading"><div><h1>Settings</h1><p>Manage privacy, appearance and account security.</p></div><Link to={`/${user.role}/profile`}>Profile</Link></div>
+    <div className="account-heading"><div><h1>Settings</h1><p>Manage privacy and account security.</p></div><Link to={`/${user.role}/profile`}>Profile</Link></div>
     {error && <div role="alert" className="account-error">{error}{!preferences && <button onClick={() => setRetry(retry + 1)}>Try again</button>}</div>}
     {notice && <p role="status" className="account-notice">{notice}</p>}
-    <div className="account-grid">
+    <div className="account-grid account-settings-grid">
       <section className="account-card"><h2>Privacy</h2>{!preferences ? !error && <p role="status">Loading privacy settings…</p> : <form onSubmit={save}>
         {[["profile_visibility", "Profile visibility"], ["photography_plans_default", "Photography plan default"], ["ai_images_default", "AI-generated image default"]].map(([key, label]) => <div className="form-field" key={key}><label htmlFor={key}>{label}</label><select id={key} value={key === "profile_visibility" && user.role === "admin" ? "private" : preferences[key]} disabled={busy || (key === "profile_visibility" && user.role === "admin")} onChange={(e) => setPreferences({ ...preferences, [key]: e.target.value })}><option value="private">Private</option><option value="public">Public</option></select></div>)}
         <p>{user.role === "admin" ? "Admin profiles and pictures always remain private." : "Public profiles expose only your display name and profile picture."}</p>
         <p>Plan and image preferences are defaults for future content features. Saving does not publish existing content or create sharing links.</p>
         <Button type="submit" loading={busy}>Save privacy settings</Button>
       </form>}</section>
-      <section className="account-card"><h2>Appearance</h2><p>Current theme: {theme === "dark" ? "Dark" : "Light"}</p><button className="account-secondary" onClick={toggleTheme}>Switch to {theme === "dark" ? "light" : "dark"} mode</button></section>
-      <section className="account-card account-wide"><h2>Account security</h2>{!profile ? <p>Account security details are unavailable until your account loads.</p> : <>
+      <section className="account-card"><h2>Account security</h2>{!profile ? <p>Account security details are unavailable until your account loads.</p> : <>
         <AccountSecurity profile={profile} />
       </>}</section>
     </div>

@@ -201,3 +201,36 @@
   .photoshoot-form { grid-template-columns: minmax(0,1fr); }
   .photoshoot-form > fieldset, .photoshoot-form > section { grid-column: 1; grid-row: auto; }
 }
+
+/* Settings and subscription controls remain contained at narrow widths and zoom. */
+.account-settings-grid { align-items: start; }
+.password-management-form { display: grid; gap: 16px; min-width: 0; }
+.password-management-form .form-field { display: grid; gap: 8px; margin: 0; min-width: 0; }
+.password-management-form .form-input {
+  width: 100%; min-width: 0; box-sizing: border-box; padding: 12px;
+  border: 1px solid var(--account-border, #64748b); border-radius: 10px;
+  background: var(--account-input, transparent); color: inherit; font: inherit;
+}
+.password-management-form p { margin: 0; }
+.account-settings-grid :is(button, a), .user-subscription-card button {
+  max-width: 100%; white-space: normal; overflow-wrap: anywhere; box-sizing: border-box;
+}
+.account-settings-grid select { min-width: 0; box-sizing: border-box; }
+@media (max-width: 760px) {
+  .account-settings-grid .gradient-button, .account-settings-grid .account-secondary { width: 100%; margin-inline: 0; }
+  .account-heading { flex-wrap: wrap; }
+}
+
+@media (max-width: 760px) {
+  .account-page .form-field, .account-page .input-wrapper { min-width: 0; }
+  .account-page :is(input, select, textarea, .input-wrapper) { max-width: 100%; box-sizing: border-box; }
+  .account-page input[type="file"] { width: 100%; min-width: 0; }
+  .account-page :is(.gradient-button, .account-secondary) { max-width: 100%; white-space: normal; overflow-wrap: anywhere; box-sizing: border-box; }
+  .account-page .account-card p { overflow-wrap: anywhere; }
+}
+@media (max-width: 430px) {
+  .account-page .account-card { padding: 16px; }
+  .account-page .account-grid { gap: 16px; }
+  .account-page .account-details { grid-template-columns: minmax(0, 1fr); }
+  .account-page .gradient-button { width: 100%; }
+}

@@ -1,0 +1,61 @@
+/* Normal User subscription presentation only; shared dashboards are unchanged. */
+.user-subscription-page { max-width: 1440px; margin-inline: auto; padding-block: 28px; }
+.user-subscription-page .account-heading { justify-content: center; text-align: center; margin-bottom: 26px; }
+.user-subscription-page .account-heading h1 { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.subscription-title-icon, .subscription-plan-icon {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 46px; height: 46px; border-radius: 16px;
+  color: var(--dashboard-text); background: linear-gradient(135deg, #8b63ff30, #27d4ff25);
+}
+.user-subscription-page .subscription-rules {
+  display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px;
+  background: var(--account-input); border: 1px solid var(--account-border);
+  border-left: 3px solid #27b8ed; border-radius: 16px;
+}
+.subscription-rules > svg { flex-shrink: 0; margin-top: 2px; color: var(--dashboard-accent); }
+.subscription-rules h2 { font-size: 16px; margin: 0 0 5px; }
+.user-subscription-page .subscription-rules p { margin: 0; font-size: 14px; }
+.subscription-status-row { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin: 20px 0 26px; }
+.subscription-status { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 22px; flex: 1; margin: 0; padding: 14px 18px; border: 1px solid var(--account-border); border-radius: 14px; background: var(--account-panel); }
+.subscription-status > div { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.subscription-status dt { display: flex; align-items: center; gap: 8px; color: var(--account-muted); font-size: 13px; }
+.subscription-status dd { margin: 0; font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.subscription-status dd:first-letter { text-transform: uppercase; }
+.user-subscription-page .subscription-refresh { display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin: 0; font-size: 13px; min-height: 44px; }
+.user-subscription-page .user-subscription-grid { gap: 18px; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; }
+.user-subscription-page .user-subscription-card { gap: 14px; padding: 22px 18px; border-radius: 20px; overflow-wrap: anywhere; }
+.subscription-card-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.user-subscription-page .user-subscription-card h2 { font-size: 20px; line-height: 1.3; }
+.user-subscription-page .studio-plan-price { font-size: clamp(24px, 2.1vw, 30px); line-height: 1.2; }
+.subscription-current-label { padding: 6px 10px; border-radius: 20px; background: var(--account-gradient); color: #14203a; font-size: 11px; font-weight: 800; }
+.subscription-period-label { align-self: flex-start; font-size: 12px; padding: 5px 10px; border: 1px solid var(--account-border); border-radius: 20px; color: var(--account-muted); background: var(--account-input); }
+.user-subscription-page .user-subscription-card.is-current {
+  border: 2px solid transparent; padding: 21px 17px;
+  background: linear-gradient(var(--account-panel), var(--account-panel)) padding-box, var(--account-gradient) border-box;
+  box-shadow: 0 4px 20px #8b63ff18;
+}
+.user-subscription-page .subscription-features { display: grid; gap: 12px; list-style: none; padding: 0; margin: 2px 0 6px; color: var(--account-text); font-size: 14px; line-height: 1.5; }
+.subscription-features li { display: flex; align-items: flex-start; gap: 9px; min-width: 0; }
+.subscription-features svg { flex-shrink: 0; margin-top: 2px; color: var(--dashboard-accent); }
+.user-subscription-page .user-owner-upgrade-card > p { font-size: 13px; line-height: 1.5; }
+.subscription-upgrade-restriction { display: flex; align-items: flex-start; gap: 9px; padding: 12px; border: 1px solid var(--account-border); border-radius: 12px; background: var(--account-input); }
+.subscription-upgrade-restriction svg { flex-shrink: 0; margin-top: 2px; }
+.user-subscription-page .subscription-upgrade-restriction p { font-size: 13px; line-height: 1.5; }
+.user-subscription-page .user-owner-upgrade-card { border-color: #a76add; }
+.user-subscription-page .user-subscription-card button { min-height: 54px; padding: 12px; font-size: 13px; line-height: 1.45; white-space: normal; max-width: 100%; }
+.user-subscription-page .user-subscription-card button:disabled { opacity: 1; cursor: not-allowed; filter: saturate(.55); color: #172037; }
+.user-subscription-page .user-subscription-card.is-current button:disabled { background: var(--account-input); color: var(--account-text); border: 1px solid var(--account-border); filter: none; }
+@media (max-width: 1250px) {
+  .user-subscription-page .user-subscription-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .user-subscription-page .user-subscription-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .user-subscription-page .account-heading h1 { font-size: 24px; }
+  .user-subscription-page .account-heading p { font-size: 14px; }
+  .user-subscription-page .subscription-rules { padding: 14px; gap: 10px; }
+  .subscription-status-row { align-items: stretch; flex-direction: column; }
+  .subscription-status { flex-direction: column; align-items: flex-start; padding: 14px; }
+  .user-subscription-page .subscription-refresh { width: 100%; white-space: normal; }
+  .user-subscription-page .user-subscription-card { padding: 20px; }
+  .user-subscription-page .user-subscription-card.is-current { padding: 19px; }
+}

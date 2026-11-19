@@ -12,7 +12,7 @@ try {
   const outfile = path.join(temporary, "subscription.mjs");
   await build({
     stdin: {
-      contents: `export { SubscriptionPlanCards, StudioOwnerUpgradeCard } from "./src/pages/user/Subscription.jsx";
+      contents: `export { SubscriptionPlanCards, StudioOwnerUpgradeCard, SubscriptionStatus } from "./src/pages/user/Subscription.jsx";
         export { FreeRequestExhaustedNotice } from "./src/pages/user/AIGenerator.jsx";
         export { USER_SUBSCRIPTION_PLANS } from "./src/config/userSubscriptionPlans.js";
         export { upgradeUserToOwner } from "./src/services/authService.js";
@@ -29,7 +29,7 @@ try {
     define: { "import.meta.env": JSON.stringify({ VITE_API_URL: "http://localhost:8000" }) },
   });
   const {
-    api, USER_SUBSCRIPTION_PLANS, SubscriptionPlanCards, StudioOwnerUpgradeCard,
+    api, USER_SUBSCRIPTION_PLANS, SubscriptionPlanCards, StudioOwnerUpgradeCard, SubscriptionStatus,
     FreeRequestExhaustedNotice, upgradeUserToOwner,
   } = await import(pathToFileURL(outfile));
   assert.deepEqual(USER_SUBSCRIPTION_PLANS, [
@@ -67,7 +67,9 @@ try {
     const active = renderToStaticMarkup(React.createElement(SubscriptionPlanCards, {
       readiness: {checkout_available:true, paid_activation_available:true}, status,
     }));
-    assert.equal((active.match(/Current Plan</g) || []).length, 1);
+    assert.equal((active.match(/Current Plan</g) || []).length, 2);
+    assert.equal((active.match(/is-current/g) || []).length, 1);
+    assert.ok(active.includes('subscription-current-label'));
     assert.equal((active.match(/disabled=""/g) || []).length, 3);
     assert.ok(active.includes('Available After Your Current Plan Ends'));
     const blocked = renderToStaticMarkup(React.createElement(StudioOwnerUpgradeCard, { status }));
@@ -79,6 +81,14 @@ try {
   }));
   assert.equal((expired.match(/Continue to Stripe Test Checkout/g) || []).length, 2);
 
+  const summary = renderToStaticMarkup(React.createElement(SubscriptionStatus, {status:{plan:'starter',remaining_credits:0,period_end:'2027-01-01T00:00:00'}}));
+  assert.ok(summary.includes('Starter'));
+  assert.ok(summary.includes('>0</dd>'));
+  assert.ok(summary.includes('2027'));
+  const unavailable = renderToStaticMarkup(React.createElement(SubscriptionStatus, {status:{plan:'free'}}));
+  assert.equal((unavailable.match(/Not available/g)||[]).length, 2);
+  const actualCost = renderToStaticMarkup(React.createElement(SubscriptionPlanCards, {status:{plan:'starter',credits_per_batch:4}}));
+  assert.ok(actualCost.includes('4 credits per four-image batch'));
   const requests = [];
   api.defaults.adapter = async (config) => {
     requests.push(config);

@@ -1,0 +1,49 @@
+/* Owner subscription only. Keep shared layouts and Normal User plans unchanged. */
+.owner-subscription-page { width: 100%; max-width: 1360px; min-width: 0; margin-inline: auto; padding-block: 8px 24px; }
+.owner-subscription-page .account-heading { justify-content: center; text-align: center; margin-bottom: 22px; }
+.owner-subscription-page .account-heading h1 { display: flex; justify-content: center; align-items: center; gap: 12px; }
+.owner-plan-icon { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; flex-shrink: 0; border-radius: 16px; background: linear-gradient(135deg,#8b63ff30,#27d4ff25); color: var(--account-text); }
+.owner-plan-overview { display: flex; gap: 14px; align-items: flex-start; padding: 16px 20px; border: 1px solid var(--account-border); border-left: 3px solid #27b8ed; border-radius: 16px; background: var(--account-input); }
+.owner-plan-overview > svg { flex-shrink: 0; margin-top: 2px; }
+.owner-plan-overview h2 { margin: 0 0 5px; font-size: 16px; }
+.owner-subscription-page .owner-plan-overview p { margin: 0; font-size: 14px; }
+.owner-plan-status-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 18px 0 24px; }
+.owner-plan-status { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; flex: 1; margin: 0; padding: 14px 18px; border: 1px solid var(--account-border); border-radius: 14px; background: var(--account-panel); }
+.owner-plan-status > div { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; align-items: center; }
+.owner-plan-status dt { display: flex; align-items: center; gap: 8px; color: var(--account-muted); font-size: 13px; }
+.owner-plan-status dd { margin: 0; font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.owner-subscription-page .owner-plan-refresh { display: inline-flex; gap: 8px; align-items: center; justify-content: center; margin: 0; font-size: 13px; white-space: normal; }
+.owner-subscription-page .studio-plan-grid { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 20px; }
+.owner-subscription-page .studio-plan { grid-column: span 2; padding: 22px; gap: 16px; border-radius: 20px; overflow-wrap: anywhere; }
+.owner-subscription-page .studio-plan:nth-child(4), .owner-subscription-page .studio-plan:nth-child(5) { grid-column: span 3; }
+.owner-plan-card-heading { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+.owner-plan-card-heading > div { min-width: 0; flex: 1; }
+.owner-subscription-page .studio-plan h2 { font-size: 20px; line-height: 1.3; margin-bottom: 6px; }
+.owner-subscription-page .studio-plan-price { margin: 0; font-size: 27px; color: var(--account-text); font-weight: 750; line-height: 1.25; }
+.owner-subscription-page .studio-plan-price span { font-size: 14px; font-weight: 400; }
+.owner-subscription-page .studio-plan-badge { font-size: 11px; font-weight: 800; white-space: nowrap; padding: 6px 10px; }
+.owner-subscription-page .studio-plan.is-current { border: 2px solid transparent; padding: 21px; background: linear-gradient(var(--account-panel),var(--account-panel)) padding-box,var(--account-gradient) border-box; box-shadow: 0 4px 20px #8b63ff18; }
+.owner-subscription-page .studio-plan ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; flex: initial; font-size: 14px; line-height: 1.5; color: var(--account-text); }
+.owner-subscription-page .studio-plan li { display: flex; align-items: flex-start; gap: 9px; min-width: 0; }
+.owner-subscription-page .studio-plan li svg { flex-shrink: 0; margin-top: 2px; color: var(--owner-text); }
+.owner-subscription-page .owner-plan-note { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.5; padding: 10px 12px; margin: 0; background: var(--account-input); border: 1px solid var(--account-border); border-radius: 12px; }
+.owner-plan-note svg { flex-shrink: 0; margin-top: 2px; }
+.owner-subscription-page .studio-plan .gradient-button { width: 100%; min-height: 48px; margin-top: auto; padding: 12px; font-size: 13px; line-height: 1.45; white-space: normal; overflow-wrap: anywhere; }
+.owner-subscription-page .studio-plan .gradient-button:disabled { opacity: 1; filter: saturate(.55); color: #172037; cursor: not-allowed; }
+.owner-subscription-page .studio-plan.is-current .gradient-button:disabled { filter: none; background: var(--account-input); color: var(--account-text); border: 1px solid var(--account-border); }
+@media(max-width:1100px) {
+  .owner-subscription-page .studio-plan-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .owner-subscription-page .studio-plan, .owner-subscription-page .studio-plan:nth-child(4), .owner-subscription-page .studio-plan:nth-child(5) { grid-column: auto; }
+  .owner-subscription-page .studio-plan:last-child:nth-child(odd) { grid-column: 1/-1; width: calc(50% - 10px); justify-self: center; }
+}
+@media(max-width:600px) {
+  .owner-subscription-page .studio-plan-grid { grid-template-columns: minmax(0,1fr); gap: 16px; }
+  .owner-subscription-page .studio-plan:last-child:nth-child(odd) { width: 100%; }
+  .owner-subscription-page .studio-plan { padding: 18px; }
+  .owner-subscription-page .studio-plan.is-current { padding: 17px; }
+  .owner-subscription-page .account-heading h1 { font-size: 24px; }
+  .owner-plan-status-row { flex-direction: column; align-items: stretch; }
+  .owner-plan-status { flex-direction: column; align-items: flex-start; }
+  .owner-subscription-page .owner-plan-refresh { width: 100%; }
+  .owner-plan-overview { padding: 14px; gap: 10px; }
+}

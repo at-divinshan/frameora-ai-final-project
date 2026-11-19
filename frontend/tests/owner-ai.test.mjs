@@ -371,7 +371,7 @@ try {
       React.createElement(ui.PlanCards, { plans, status: { plan: "basic", trial_available: true }, activate() {} })));
     for (const text of ["10 credits per month", "2 active/editable projects", "3 active share links",
       "100 credits total", "14 days", "20 active share links", "500 credits per month",
-      "50 active/editable projects", "100 active share links", "LKR 1,500/month", "Payment setup pending"]) {
+      "50 active/editable projects", "100 active share links", "LKR 1,500<span> / month</span>", "Payment setup pending"]) {
       assert.ok(html.includes(text), text);
     }
   });

@@ -132,15 +132,6 @@ export default function PlanCard({ plan, onDeleted }) {
         </details>
       )}
       <div className="user-plan-card-actions">
-        <button
-          className="user-plan-action-secondary"
-          type="button"
-          onClick={loadSuggestions}
-          disabled={suggestionsLoading}
-          aria-label={`Get AI suggestions for ${plan.photography_type} plan`}
-        >
-          <Sparkles size={15} aria-hidden="true" /> {suggestionsLoading ? "Getting Suggestions…" : "AI Suggestions"}
-        </button>
         <Link className="user-plan-action-secondary" to={`/user/ai?plan=${plan.id}`}>
           <Sparkles size={15} aria-hidden="true" /> Generate Images
         </Link>

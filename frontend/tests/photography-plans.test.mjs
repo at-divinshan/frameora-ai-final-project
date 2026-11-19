@@ -75,7 +75,10 @@ try {
     assert.ok(!html.includes("<pre")); assert.ok(!html.includes("<code"));
     assert.ok(!html.includes("photography_style"));
     assert.ok(html.includes("Edit</a>")); assert.ok(html.includes("Delete</button>"));
-    assert.ok(html.includes("AI Suggestions"));
+    assert.ok(!html.includes("AI Suggestions"));
+    assert.ok(!html.includes("Get AI suggestions"));
+    assert.ok(html.includes('href="/user/ai?plan=21"'));
+    assert.ok(html.includes('href="/user/plans/21/edit"'));
     assert.ok(!html.includes("role=\"alertdialog\""));
   });
   test("cards omit empty and malformed preferences without crashing", () => {

@@ -1,0 +1,25 @@
+.admin-analytics { width: 100%; min-width: 0; color: var(--text-main); }
+.admin-analytics > p, .analytics-panel p { color: var(--text-muted); }
+.analytics-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 24px 0 16px; }
+.analytics-panel { min-width: 0; padding: 20px; border: 1px solid var(--border-color, rgba(128,128,160,.25)); border-radius: 18px; background: var(--bg-panel); overflow-wrap: anywhere; }
+.analytics-panel h2 { font-size: 1rem; margin: 0 0 14px; }
+.analytics-number { font-size: 2rem; color: var(--text-main); }
+.analytics-note { font-size: .875rem; line-height: 1.6; }
+.analytics-charts { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; margin-top: 16px; }
+.analytics-plot { width: 100%; height: 290px; min-width: 0; }
+.analytics-axis-caption { font-size: .8rem; margin: 0 0 12px; }
+.analytics-tooltip { max-width: 230px; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-panel); color: var(--text-main); box-shadow: 0 4px 16px #0003; }
+.analytics-tooltip p { margin: 6px 0 0; color: var(--text-main); }
+.analytics-donut-layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 20px; align-items: center; }
+.analytics-plans { list-style: none; padding: 0; margin: 0; }
+.analytics-plans li { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; }
+.analytics-plans i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+.analytics-plans strong { flex-shrink: 0; }
+.analytics-plans small { color: var(--text-muted); }
+.analytics-chart-data { font-size: .85rem; margin-top: 12px; }
+.analytics-chart-data summary { cursor: pointer; color: var(--text-muted); }
+.analytics-chart-data summary:focus-visible { outline: 2px solid var(--link-color); outline-offset: 4px; }
+.analytics-chart-data table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.analytics-chart-data th, .analytics-chart-data td { text-align: left; padding: 6px; border-bottom: 1px solid var(--border-color); }
+@media(max-width: 1000px) { .analytics-stats { grid-template-columns: repeat(2,minmax(0,1fr)); } .analytics-charts { grid-template-columns: minmax(0,1fr); } }
+@media(max-width: 480px) { .analytics-stats { grid-template-columns: minmax(0,1fr); } .analytics-panel { padding: 16px; } .analytics-donut-layout { grid-template-columns: minmax(0,1fr); } .analytics-plot { height: 260px; } }

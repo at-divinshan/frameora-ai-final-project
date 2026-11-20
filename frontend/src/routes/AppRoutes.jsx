@@ -1,3 +1,4 @@
+import AdminAnalytics from "../pages/admin/Analytics";
 import EmailVerification from '../pages/auth/EmailVerification';
 import AdminUsers from "../pages/admin/Users";
 import Notifications from "../pages/shared/Notifications";
@@ -104,6 +105,7 @@ export default function AppRoutes() {
               </Route>
             ) : (
               <>
+                {role === "admin" && <Route path="/admin/analytics" element={<AdminAnalytics />} />}
                 {role === "admin" && <Route path="/admin/users" element={<AdminUsers />} />}
                 {role === "admin" && <Route path="/admin/payments" element={<AdminPayments />} />}
                 {role === "admin" && <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />}

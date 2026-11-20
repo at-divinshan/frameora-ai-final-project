@@ -1,7 +1,7 @@
 import { dismissWithEscape } from '../../utils/keyboardDismiss';
 import { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { BarChart3, Bell, Building2, CreditCard, FolderOpen, House, LogOut, Menu, Moon, Plus, Search, Settings, Sun, Users, UserRound, X } from "lucide-react";
+import { BarChart3, Building2, CreditCard, FolderOpen, House, LogOut, Menu, Moon, Plus, Search, Settings, Sun, Users, UserRound, X } from "lucide-react";
 import AccountAvatar from "../common/AccountAvatar";
 import FrameoraLogo from "../common/FrameoraLogo";
 import useAuth from "../../hooks/useAuth";
@@ -14,8 +14,7 @@ const navigation = [
   { label: "Projects", icon: FolderOpen },
   { label: "Payments", icon: CreditCard, path: "/admin/payments" },
   { label: "Subscriptions", icon: CreditCard, path: "/admin/subscriptions" },
-  { label: "Analytics", icon: BarChart3 },
-  { label: "Notifications", icon: Bell },
+  { label: "Analytics", icon: BarChart3, path: "/admin/analytics" },
   { label: "Profile", icon: UserRound, path: "/admin/profile" },
   { label: "Settings", icon: Settings, path: "/admin/settings" },
 ];
@@ -63,7 +62,6 @@ export default function AdminLayout({ children, title = "Manage Users & Studio O
         <header className="admin-navbar">
           <h1>{title}</h1>
           <div className="admin-navbar-controls">
-            <button className="admin-icon-button" type="button" disabled title="Notifications — coming soon" aria-label="Notifications — coming soon"><Bell size={20} aria-hidden="true" /></button>
             <Link className="admin-account account-profile-link" to="/admin/profile" aria-label="Open your profile">
               <AccountAvatar className="admin-avatar" />
               <div><strong title={user?.name}>{user?.name}</strong><span>Admin</span></div>

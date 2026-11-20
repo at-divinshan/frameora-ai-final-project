@@ -43,3 +43,9 @@ def payments(filters: Annotated[PaymentFilters, Query()], db: Session = Depends(
 @router.get('/payments/{kind}/{identifier}')
 def payment_detail(kind: Literal['payment','checkout'], identifier: int = Path(gt=0), db: Session = Depends(get_db)):
     return admin_payment_service.detail(db, kind, identifier)
+
+
+@router.get("/analytics")
+def analytics(db: Session = Depends(get_db)):
+    from app.services.admin_analytics_service import analytics as read_analytics
+    return read_analytics(db)

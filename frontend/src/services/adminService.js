@@ -7,3 +7,5 @@ export async function getAdminOwnerPhoto(id, signal) {
   if (data.type !== 'image/png') throw new Error('Invalid photo response');
   return data;
 }
+
+export const getAdminAnalytics = signal => api.get('/admin/analytics', { signal }).then(r => r.data);
